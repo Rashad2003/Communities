@@ -1,0 +1,180 @@
+import groupModel from "../models/groupModel.js";
+import communityModel from "../models/communityModel.js";
+import messageModel from "../models/messageModel.js";
+import { getIO } from "../socket.js";
+
+/* ==============================
+   CREATE SUB GROUP (ADMIN ONLY)
+================================ */
+export const createGroups = async (req, res) => {
+  const { name } = req.body;
+
+  const community = await communityModel.findOne();
+  if (!community) {
+    return res.status(400).json({ message: "Community not found" });
+  }
+
+  // ✅ ONLY COMMUNITY ADMIN
+  if (!community.admins.includes(req.user.id)) {
+    return res.status(403).json({ message: "Admin only" });
+  }
+
+  const group = await groupModel.create({
+    name,
+    isAnnouncement: false,
+    admins: [req.user.id],
+    members: [req.user.id],       // 🔥 ADMIN ALWAYS MEMBER
+    pendingRequests: []            // 🔥 MUST EXIST
+  });
+
+  // 🔥 emit real-time event
+const io = getIO();
+io.emit("groupCreated", group);
+
+res.json(group);
+
+
+  res.json(group);
+};
+
+/* ==============================
+   GET GROUPS
+================================ */
+export const getGroups = async (req, res) => {
+  const community = await communityModel.findOne();
+  if (!community) {
+    return res.status(400).json({
+      message: "Community not created yet"
+    });
+  }
+
+  const groups = await groupModel.find()
+    .populate("admins", "_id name")
+    .populate("members", "_id name")
+    .populate("pendingRequests", "_id name");
+
+  res.json(groups);
+};
+
+/* ==============================
+   MEMBER REQUEST TO JOIN
+================================ */
+export const addMember = async (req, res) => {
+  const group = await groupModel.findById(req.params.groupId);
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  if (group.isAnnouncement) {
+    return res.status(400).json({ message: "No join needed" });
+  }
+
+  // ❌ Already member
+  if (group.members.includes(req.user.id)) {
+    return res.status(400).json({ message: "Already a member" });
+  }
+
+  // ✅ Add to pending
+  if (!group.pendingRequests.includes(req.user.id)) {
+    group.pendingRequests.push(req.user.id);
+    await group.save();
+  }
+
+  // 🔥 SOCKET EVENT
+  const io = getIO();
+  io.emit("joinRequested", {
+    groupId: group._id.toString(),
+    userId: req.user.id
+  });
+
+  res.json({ message: "Join request sent" });
+};
+
+/* ==============================
+   ADMIN APPROVE MEMBER
+================================ */
+export const approvedMember = async (req, res) => {
+  const { userId } = req.body;
+  const group = await groupModel.findById(req.params.groupId);
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  // ✅ Remove from pending
+  group.pendingRequests = group.pendingRequests.filter(
+    id => id.toString() !== userId
+  );
+
+  // ✅ Add to members (only once)
+  if (!group.members.includes(userId)) {
+    group.members.push(userId);
+  }
+
+  await group.save();
+
+  // 🔥 SOCKET EVENT
+  const io = getIO();
+  io.emit("requestApproved", {
+    groupId: group._id.toString(),
+    userId,
+    groupName: group.name
+  });
+
+  res.json({ message: "User approved" });
+};
+
+/* ==============================
+   DELETE GROUP (ADMIN)
+================================ */
+export const deleteGroup = async (req, res) => {
+  const { groupId } = req.params;
+
+  const group = await groupModel.findById(groupId);
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  await messageModel.deleteMany({ groupId });
+  await group.deleteOne();
+
+  const io = getIO();
+  io.emit("groupDeleted", {
+    groupId: group._id.toString()
+  });
+
+  console.log("🔥 EMITTING groupDeleted:", group._id.toString());
+
+  res.json({ success: true });
+};
+
+
+export const rejectRequest = async (req, res) => {
+  const { userId } = req.body;
+
+  const group = await groupModel.findById(req.params.groupId);
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  // remove from pending
+  group.pendingRequests = group.pendingRequests.filter(
+    id => id.toString() !== userId
+  );
+
+  await group.save();
+
+  // 🔥 REAL-TIME EMIT (THIS WAS MISSING)
+  const io = getIO();
+  io.emit("requestRejected", {
+    groupId: group._id.toString(),
+    userId,
+    groupName: group.name
+  });
+
+  res.json({ success: true });
+};
+
+
