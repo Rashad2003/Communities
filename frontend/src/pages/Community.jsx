@@ -174,6 +174,38 @@ useEffect(() => {
   return () => socket.off("groupCreated");
 }, []);
 
+useEffect(() => {
+  const handleMemberRemoved = ({ groupId, userId }) => {
+    console.log("🔥 MEMBER REMOVED RECEIVED", groupId, userId);
+
+    // update groups
+    setGroups(prev =>
+      prev.map(g =>
+        g._id === groupId
+          ? {
+              ...g,
+              members: g.members.filter(m => m._id !== userId)
+            }
+          : g
+      )
+    );
+
+    // if current user removed → kick out
+    if (userId === user._id && activeGroup?._id === groupId) {
+      setActiveGroup(null);
+    }
+  };
+
+  socket.on("memberRemoved", handleMemberRemoved);
+
+  return () => {
+    socket.off("memberRemoved", handleMemberRemoved);
+  };
+}, [activeGroup]);
+
+
+
+
 
 
 

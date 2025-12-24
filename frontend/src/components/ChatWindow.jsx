@@ -6,6 +6,7 @@ import { getUser } from "../utils/auth";
 import socket from "../socket.js";
 import { IoIosArrowDown } from "react-icons/io";
 import { IoMdArrowBack } from "react-icons/io";
+import GroupInfoModal from "./GroupInfoModal.jsx";
 
 const ChatWindow = ({ group, setGroups, communityAdmins, setActiveGroup, isMobile }) => {
   const [messages, setMessages] = useState([]);
@@ -17,6 +18,7 @@ const messagesContainerRef = useRef(null);
 const [showScrollDown, setShowScrollDown] = useState(false);
 const [pinnedMessage, setPinnedMessage] = useState(null);
 const [showMenu, setShowMenu] = useState(false);
+const [showGroupInfo, setShowGroupInfo] = useState(false);
 const menuRef = useRef(null);
 
 const isCommunityAdmin = communityAdmins.some(
@@ -240,6 +242,14 @@ useEffect(() => {
         </div>
       )}
 
+      if (!group.isAnnouncement && !isMember) {
+  return (
+    <div className="flex items-center justify-center h-full text-gray-500">
+      You are no longer a member of this group
+    </div>
+  );
+}
+
   return (
     <div className="flex-1 w-full flex flex-col relative overflow-y-hidden">
       {/* Chat Header */}
@@ -270,6 +280,16 @@ useEffect(() => {
 
       {showMenu && (
         <div className="absolute right-0 mt-2 bg-white text-black border rounded shadow w-48 z-50">
+
+          <button
+        onClick={() => {
+          setShowGroupInfo(true);
+          setShowMenu(false);
+        }}
+        className="w-full text-left px-4 py-2 hover:bg-gray-100"
+      >
+        Group Info
+      </button>
           
           <button
             onClick={async () => {
@@ -294,9 +314,16 @@ useEffect(() => {
           </button>
 
         </div>
+        
       )}
     </div>
   )}
+  {showGroupInfo && (
+  <GroupInfoModal
+    group={group}
+    onClose={() => setShowGroupInfo(false)}
+  />
+)}
       </div>
       {pinnedMessage && (
   <div className="bg-yellow-100 border-b px-4 py-2 flex items-center gap-2">

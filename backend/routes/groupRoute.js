@@ -1,5 +1,5 @@
 import express from "express";
-import { addMember, createGroups, deleteGroup, getGroups, approvedMember, rejectRequest } from "../controllers/groupController.js";
+import { addMember, createGroups, deleteGroup, getGroups, approvedMember, rejectRequest, removeMember } from "../controllers/groupController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import roleMiddleware from "../middlewares/roleMiddleware.js";
 
@@ -34,6 +34,13 @@ router.delete(
   authMiddleware,
   deleteGroup
 );
+
+router.post(
+  "/:groupId/remove/:userId",
+  authMiddleware,
+  removeMember
+);
+
 
 
 export default router;

@@ -177,4 +177,45 @@ export const rejectRequest = async (req, res) => {
   res.json({ success: true });
 };
 
+export const removeMember = async (req, res) => {
+  const { groupId, userId } = req.params;
+  const adminId = req.user.id;
+
+  const group = await groupModel.findById(groupId);
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  // 🔒 only admin can remove
+  const isAdmin = group.admins.some(
+    a => a.toString() === adminId.toString()
+  );
+
+  if (!isAdmin) {
+    return res.status(403).json({ message: "Not authorized" });
+  }
+
+  // 🚫 cannot remove another admin (optional rule)
+  if (group.admins.includes(userId)) {
+    return res.status(400).json({ message: "Cannot remove admin" });
+  }
+
+  // remove member
+  group.members = group.members.filter(
+    m => m.toString() !== userId
+  );
+
+  await group.save();
+
+  // 🔥 realtime update
+  const io = getIO();
+  io.to(groupId.toString()).emit("memberRemoved", {
+  groupId: groupId.toString(),
+  userId: userId.toString()
+});
+
+  res.json({ success: true });
+};
+
 
