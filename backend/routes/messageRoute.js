@@ -11,11 +11,11 @@ router.get("/:groupId", authMiddleware, getMessage);
 // Send message
 router.post("/", authMiddleware, upload.single("file"), sendMessage);
 
-router.post(
-  "/pin/:messageId",
-  authMiddleware,
-  pinMessage
-);
+// router.post(
+//   "/pin/:messageId",
+//   authMiddleware,
+//   pinMessage
+// );
 
 router.get(
   "/pinned/:groupId",

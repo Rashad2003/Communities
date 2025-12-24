@@ -9,10 +9,23 @@ const Community = () => {
   const [groups, setGroups] = useState([]);
   const [activeGroup, setActiveGroup] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
   const user = getUser();
 
 const communityAdmin =
   groups.find(g => g.isAnnouncement)?.admins || [];
+
+  useEffect(() => {
+  const checkMobile = () => {
+    setIsMobile(window.innerWidth < 768);
+  };
+
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+
+  return () => window.removeEventListener("resize", checkMobile);
+}, []);
+
 
   useEffect(() => {
   const fetchGroups = async () => {
@@ -171,6 +184,8 @@ useEffect(() => {
   
   return (
     <div className="h-screen flex">
+
+      {(!isMobile || !activeGroup) && (
       <Sidebar
         groups={groups}
         setGroups={setGroups}
@@ -179,9 +194,10 @@ useEffect(() => {
           notifications={notifications}
   setNotifications={setNotifications}
       />
+      )}
 
-      {activeGroup && (
-        <ChatWindow group={activeGroup} setActiveGroup={setActiveGroup} setGroups={setGroups} communityAdmins={communityAdmin} />
+      {(!isMobile || activeGroup) && activeGroup && (
+        <ChatWindow group={activeGroup} setActiveGroup={setActiveGroup} setGroups={setGroups} communityAdmins={communityAdmin} isMobile={isMobile} />
       )}
     </div>
   );

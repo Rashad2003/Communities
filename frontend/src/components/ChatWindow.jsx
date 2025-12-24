@@ -5,8 +5,9 @@ import MessageInput from "./MessageInput";
 import { getUser } from "../utils/auth";
 import socket from "../socket.js";
 import { IoIosArrowDown } from "react-icons/io";
+import { IoMdArrowBack } from "react-icons/io";
 
-const ChatWindow = ({ group, setGroups, communityAdmins, setActiveGroup }) => {
+const ChatWindow = ({ group, setGroups, communityAdmins, setActiveGroup, isMobile }) => {
   const [messages, setMessages] = useState([]);
   const [typingUser, setTypingUser] = useState("");
   const user = getUser();
@@ -89,11 +90,11 @@ useEffect(() => {
 }, []);
 
 
-  useEffect(() => {
-    if (!group?._id) return;
-    socket.emit("joinGroup", group._id);
-    fetchMessages();
-  }, [group._id]);
+  // useEffect(() => {
+  //   if (!group?._id) return;
+  //   socket.emit("joinGroup", group._id);
+  //   fetchMessages();
+  // }, [group._id]);
 
   useEffect(() => {
   if (!group?._id) return;
@@ -154,11 +155,38 @@ useEffect(() => {
 useEffect(() => {
   if (!group?._id) return;
 
-  const handlePinUpdated = ({ groupId, pinnedMessage }) => {
-    if (groupId === group._id) {
-      setPinnedMessage(pinnedMessage);
-    }
-  };
+  // const handlePinUpdated = ({ groupId, pinnedMessage, data }) => {
+  //   if (data.groupId === group._id) {
+  //     setPinnedMessage(pinnedMessage);
+  //   }
+  // };
+
+  const handlePinUpdated = (data) => {
+  if (!data || !data.groupId) return;
+
+  if (data.groupId !== group._id) return;
+
+  // 1️⃣ Update pinned banner
+  setPinnedMessage(data.pinnedMessage ?? null);
+
+  // 2️⃣ Update messages list (THIS FIXES ICON)
+  setMessages(prev =>
+    prev.map(msg => {
+      // unpin all messages
+      if (!data.pinnedMessage) {
+        return { ...msg, isPinned: false };
+      }
+
+      // pin only the selected message
+      if (msg._id === data.pinnedMessage._id) {
+        return { ...msg, isPinned: true };
+      }
+
+      return { ...msg, isPinned: false };
+    })
+  );
+};
+
 
   socket.on("pinUpdated", handlePinUpdated);
 
@@ -213,10 +241,21 @@ useEffect(() => {
       )}
 
   return (
-    <div className="flex-1 flex flex-col relative overflow-y-hidden">
+    <div className="flex-1 w-full flex flex-col relative overflow-y-hidden">
       {/* Chat Header */}
       <div className="bg-primary text-white p-4 font-semibold flex items-center justify-between">
-        {group.name}
+        {isMobile && (
+    <button
+      onClick={() => setActiveGroup(null)}
+      className="text-2xl"
+    >
+      <IoMdArrowBack />
+    </button>
+  )}
+        
+  <h2 className="font-semibold text-lg">
+    {group.name}
+  </h2>
         {/* {group.isAnnouncement && (
           <span className="text-sm ml-2">(Announcements)</span>
         )} */}

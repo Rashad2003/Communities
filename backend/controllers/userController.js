@@ -3,7 +3,14 @@ import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
 
 export const registerUser = async (req, res) => {
+  try {
     const { name, email, password, role } = req.body;
+
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
     const hashed = await bcrypt.hash(password, 10);
     const user = await userModel.create({
       name,
@@ -11,7 +18,24 @@ export const registerUser = async (req, res) => {
       password: hashed,
       role
     });
-    res.json(user);
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+      res.status(201).json({
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Registration failed" });
+  }
 }
 
 export const loginUser = async (req, res) => {

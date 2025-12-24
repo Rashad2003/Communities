@@ -2,6 +2,7 @@ import { getUser } from "../utils/auth";
 import API from "../api/api";
 import { useEffect, useRef, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
+import { FaFileAlt } from "react-icons/fa";
 
 const MessageBubble = ({ message, isMe, isAdmin }) => {
   const user = getUser();
@@ -67,9 +68,8 @@ const MessageBubble = ({ message, isMe, isAdmin }) => {
           <a
             href={`http://localhost:4001${message.content}`}
             target="_blank"
-            className="text-blue-600 underline"
           >
-            📄 Download file
+          <FaFileAlt className="text-5xl p-1 border rounded-full"/>
           </a>
         )}
 
@@ -96,7 +96,7 @@ const MessageBubble = ({ message, isMe, isAdmin }) => {
             {isAdmin && (
               <button
                 onClick={togglePin}
-                className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                className="w-full text-left text-black px-3 py-2 hover:bg-gray-100"
               >
                 {message.isPinned ? "❌ Unpin" : "📌 Pin"}
               </button>

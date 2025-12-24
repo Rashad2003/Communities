@@ -129,12 +129,12 @@ const isBlocked = group.isAnnouncement && !isAdmin;
 )}
     <form
       onSubmit={sendMessage}
-      className="p-1 bg-white border rounded-full flex w-[55rem] mx-auto"
+      className="p-1 bg-white border flex w-full mx-auto"
     >
     <button
   type="button"
   onClick={() => setShowEmoji(prev => !prev)}
-  className="px-3 text-2xl"
+  className="px-1 md:px-3 text-2xl"
 >
 <MdOutlineEmojiEmotions />
 </button>
@@ -149,7 +149,7 @@ const isBlocked = group.isAnnouncement && !isAdmin;
 <button
   type="button"
   onClick={() => document.getElementById("fileInput").click()}
-  className="px-3 text-xl"
+  className="px-1 md:px-3 text-xl"
 >
 <FaPlus />
 </button>
@@ -157,7 +157,7 @@ const isBlocked = group.isAnnouncement && !isAdmin;
 
       <input
   disabled={!!file}
-  className={`flex-1 rounded-full px-4 py-2 ${
+  className={`flex-1 rounded-full outline-none px-2 md:px-4 py-2 ${
     file ? "bg-gray-100 cursor-not-allowed" : ""
   }`}
   placeholder={file ? "Send file..." : "Type a message"}
@@ -167,7 +167,7 @@ const isBlocked = group.isAnnouncement && !isAdmin;
 
 <button
   disabled={isBlocked}
-  className={`px-4 py-2 text-xl rounded-full text-white ${
+  className={`px-1 md:px-4 py-2 text-xl rounded-full text-white ${
     isBlocked ? "bg-gray-400" : "bg-secondary"
   }`}
 >

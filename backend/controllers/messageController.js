@@ -146,42 +146,28 @@ export const togglePinMessage = async (req, res) => {
     return res.status(403).json({ message: "Admin only" });
   }
 
-  let action = "";
+  const newPinState = !message.isPinned;
 
-  if (message.isPinned) {
-    // UNPIN
-    message.isPinned = false;
-    await message.save();
-    action = "unpinned";
-  } else {
-    // UNPIN ALL OTHERS
+  // if pinning → unpin others in group
+  if (newPinState) {
     await messageModel.updateMany(
       { groupId: message.groupId },
       { isPinned: false }
     );
-
-  // Else → unpin all others in this group
-     message.isPinned = true;
-    await message.save();
-    action = "pinned";
   }
 
-    const io = getIO();
+  message.isPinned = newPinState;
+  await message.save();
 
-let pinnedMessage = null;
-
-if (action === "pinned") {
-  pinnedMessage = await messageModel
+  const updatedMessage = await messageModel
     .findById(message._id)
     .populate("sender", "name");
-}
 
-io.to(message.groupId.toString()).emit("pinUpdated", {
-  groupId: message.groupId.toString(),
-  pinnedMessage   // ✅ full object or null
-});
-
-  res.json({ action });
+  const io = getIO();
+  io.to(message.groupId.toString()).emit("pinUpdated", {
+    groupId: message.groupId.toString(),
+    pinnedMessage: newPinState ? updatedMessage : null
+  });
 };
 
 export const deleteMessage = async (req, res) => {

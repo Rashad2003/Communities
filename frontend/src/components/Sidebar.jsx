@@ -39,7 +39,7 @@ const [showNotifications, setShowNotifications] = useState(false);
   ];
 
   return (
-    <div className="w-100 bg-white border-r h-full flex flex-col">
+    <div className="w-100 md:w-96 bg-white border-r h-full flex flex-col">
 
       {/* HEADER */}
       <div className="bg-primary text-white p-4 flex justify-between items-center">
@@ -247,7 +247,7 @@ const [showNotifications, setShowNotifications] = useState(false);
       {showRequestsModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white w-96 max-h-[80vh] rounded-lg p-4 overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-3">
+            <h2 className="text-lg font-semibold mb-3 text-center">
               Join Requests
             </h2>
 
@@ -255,18 +255,15 @@ const [showNotifications, setShowNotifications] = useState(false);
               .filter(g => g.pendingRequests.length > 0)
               .map(group => (
                 <div key={group._id} className="mb-4">
-                  <div className="font-semibold mb-2">
-                    💬 {group.name}
-                  </div>
 
                   {group.pendingRequests.map(user => (
                     <div
                       key={user._id}
-                      className="flex justify-between items-center mb-2 border p-2 rounded"
+                      className="flex justify-between flex-col items-center mb-2 border p-2 rounded text-center"
                     >
-                      <span>
+                      <span className="mb-2">
                         <b>{user.name}</b> wants to join{" "}
-                        <b>{group.name}</b>
+                        <b>💬 {group.name}</b> Group
                       </span>
 
                       <div className="flex gap-2">
