@@ -3,6 +3,7 @@ import API from "../api/api";
 import { useEffect, useRef, useState } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { FaFileAlt } from "react-icons/fa";
+import ReportModal from "./reportModal";
 
 const MessageBubble = ({ message, isMe, isAdmin }) => {
   const user = getUser();
@@ -11,6 +12,7 @@ const MessageBubble = ({ message, isMe, isAdmin }) => {
   const canDelete = isAdmin || message.sender._id === user._id;
 
   const [showMenu, setShowMenu] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const menuRef = useRef(null);
 
   useEffect(() => {
@@ -79,14 +81,13 @@ const MessageBubble = ({ message, isMe, isAdmin }) => {
             minute: "2-digit"
           })}
         </div>
-        {isMe && (
+        
          <button
           onClick={() => setShowMenu(prev => !prev)}
           className="absolute top-1 right-1 text-xs opacity-60 hover:opacity-100"
         >
           <IoIosArrowDown className="text-xl" />
         </button>
-        )}
         {showMenu && (
           <div
             ref={menuRef}
@@ -111,6 +112,17 @@ const MessageBubble = ({ message, isMe, isAdmin }) => {
                 🗑️ Delete
               </button>
             )}
+
+            <button
+  onClick={() => setShowReport(true)}
+  className="w-full text-left px-3 py-2 text-red-600 hover:bg-gray-100"
+>
+  🚩 Report
+</button>
+            {showReport && (
+              <ReportModal message={message} onClose={() => setShowReport(false)} />
+            )}
+
           </div>
         )}
       </div>

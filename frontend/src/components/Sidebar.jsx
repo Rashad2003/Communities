@@ -6,6 +6,7 @@ import { FaUserGroup } from "react-icons/fa6";
 import { MdGroupAdd } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import socket from "../socket.js";
+import AdminReportsModal from "./adminReportModal.jsx";
 
 const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications, setNotifications }) => {
   const user = getUser();
@@ -18,6 +19,7 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [showMemberMenu, setShowMemberMenu] = useState(false);
 const [showNotifications, setShowNotifications] = useState(false);
+const [showReportsModal, setShowReportsModal] = useState(false);
 
 
 useEffect(() => {
@@ -92,13 +94,22 @@ useEffect(() => {
     group.members.some(m => m._id === user._id);
 
   const isPending = group =>
-    group.pendingRequests.some(p => p._id === user._id);
+    group.pendingRequests.some(p => String(p._id) === String(user._id));
 
   /* ---------- ORDER GROUPS ---------- */
   const orderedGroups = [
     ...groups.filter(g => g.isAnnouncement),
     ...groups.filter(g => !g.isAnnouncement)
   ];
+
+  useEffect(() => {
+  socket.on("newReport", () => {
+    console.log("🚩 New report received");
+  });
+
+  return () => socket.off("newReport");
+}, []);
+
 
   return (
     <div className="w-100 md:w-96 bg-white border-r h-full flex flex-col">
@@ -192,6 +203,16 @@ useEffect(() => {
                   className="w-full text-left px-4 py-2 hover:bg-gray-100"
                 >
                   👥 Requests to Join
+                </button>
+                <button
+                  onClick={() => {
+                    setShowReportsModal(true);
+                    setShowAdminMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                >
+                  🚩 Reports
+
                 </button>
               </div>
             )}
@@ -370,6 +391,10 @@ useEffect(() => {
             </div>
           </div>
         </div>
+      )}
+
+      {showReportsModal && (
+        <AdminReportsModal onClose={() => setShowReportsModal(false)} />
       )}
     </div>
   );

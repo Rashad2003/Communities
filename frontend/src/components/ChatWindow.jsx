@@ -226,6 +226,16 @@ useEffect(() => {
   return () => socket.off("groupDeleted");
 }, []);
 
+useEffect(() => {
+  socket.on("messageDeleted", ({ messageId }) => {
+    setMessages(prev =>
+      prev.filter(m => m._id !== messageId)
+    );
+  });
+
+  return () => socket.off("messageDeleted");
+}, []);
+
 
 
   if (!group) {

@@ -81,9 +81,24 @@ export const addMember = async (req, res) => {
 
   // 🔥 SOCKET EVENT
   const io = getIO();
-  io.emit("joinRequested", {
+     // 🔥 notify ADMINS (ObjectId → room)
+  group.admins.forEach(adminId => {
+    io.to(adminId.toString()).emit("joinRequested", {
+      groupId: group._id.toString(),
+      user: {
+        _id: req.user.id,
+        name: req.user.name
+      }
+    });
+  });
+
+  // 🔥 notify REQUESTING USER
+  io.to(req.user.id).emit("joinPending", {
     groupId: group._id.toString(),
-    userId: req.user.id
+    user: {
+      _id: req.user.id,
+      name: req.user.name
+    }
   });
 
   res.json({ message: "Join request sent" });
@@ -100,24 +115,36 @@ export const approvedMember = async (req, res) => {
     return res.status(404).json({ message: "Group not found" });
   }
 
+  const user = await userModel.findById(userId).select("_id name email");
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
   // ✅ Remove from pending
   group.pendingRequests = group.pendingRequests.filter(
     id => id.toString() !== userId
   );
 
   // ✅ Add to members (only once)
-  if (!group.members.includes(userId)) {
+    if (!group.members.some(m => m.toString() === userId)) {
     group.members.push(userId);
   }
-
   await group.save();
-
-  // 🔥 SOCKET EVENT
-  const io = getIO();
-  io.emit("requestApproved", {
+const io = getIO();
+  // 🔥 1️⃣ notify APPROVED USER (REAL TIME)
+  io.to(userId.toString()).emit("requestApproved", {
     groupId: group._id.toString(),
-    userId,
+    user,
     groupName: group.name
+  });
+
+  // 🔥 2️⃣ notify ADMINS (REAL TIME)
+  group.admins.forEach(adminId => {
+    io.to(adminId.toString()).emit("requestApproved", {
+      groupId: group._id.toString(),
+      user,
+      groupName: group.name
+    });
   });
 
   res.json({ message: "User approved" });
@@ -208,8 +235,8 @@ export const removeMember = async (req, res) => {
 
   // 🔥 realtime update
   const io = getIO();
-  io.to(groupId.toString()).emit("memberRemoved", {
-  groupId: groupId.toString(),
+  io.to(group._id.toString()).emit("memberRemoved", {
+  groupId: group._id.toString(),
   userId: userId.toString()
 });
 

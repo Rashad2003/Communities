@@ -19,6 +19,10 @@ export const initSocket = server => {
       socket.join(groupId);
     });
 
+    socket.on("leaveGroup", groupId => {
+    socket.leave(groupId);
+  });
+
     socket.on("joinUser", userId => {
       socket.join(userId);
       console.log("👤 User joined personal room:", userId);

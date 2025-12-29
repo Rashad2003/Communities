@@ -45,7 +45,14 @@ const communityAdmin =
   };
 
   fetchGroups();
+
+  socket.on("connect", fetchGroups);
+
+  return () => {
+    socket.off("connect", fetchGroups);
+  };
 }, []);
+
 
 useEffect(() => {
   const handleGroupDeleted = ({ groupId }) => {
@@ -70,15 +77,13 @@ useEffect(() => {
 }, [groups]);
 
 useEffect(() => {
-  socket.on("joinRequested", ({ groupId, userId }) => {
+  socket.on("joinRequested", ({ groupId, user }) => {
     setGroups(prev =>
       prev.map(g =>
         g._id === groupId
           ? {
               ...g,
-              pendingRequests: [...g.pendingRequests, {
-                _id: userId
-              }]
+              pendingRequests: [...g.pendingRequests, user]
             }
           : g
       )
@@ -89,15 +94,15 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  socket.on("requestApproved", ({ groupId, userId }) => {
+  socket.on("requestApproved", ({ groupId, user }) => {
     setGroups(prev =>
       prev.map(g =>
         g._id === groupId
           ? {
               ...g,
-              members: [...g.members, { _id: userId }],
+              members: [...g.members, user],
               pendingRequests: g.pendingRequests.filter(
-                p => p._id !== userId
+                p => p._id !== user._id
               )
             }
           : g
@@ -191,8 +196,10 @@ useEffect(() => {
     );
 
     // if current user removed → kick out
-    if (userId === user._id && activeGroup?._id === groupId) {
-      setActiveGroup(null);
+    if (userId === user._id) {
+      setActiveGroup(prev =>
+        prev?._id === groupId ? null : prev
+      );
     }
   };
 
@@ -201,7 +208,7 @@ useEffect(() => {
   return () => {
     socket.off("memberRemoved", handleMemberRemoved);
   };
-}, [activeGroup]);
+}, [user._id, groups, activeGroup]);
 
 
 useEffect(() => {
@@ -227,6 +234,13 @@ useEffect(() => {
 
   return () => socket.off("memberAdded");
 }, []);
+
+useEffect(() => {
+  if (!user?._id) return;
+
+  socket.emit("joinUser", user._id);
+}, [user]);
+
 
 
 

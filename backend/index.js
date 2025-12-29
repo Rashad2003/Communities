@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoute.js";
 import groupRoutes from "./routes/groupRoute.js";
 import communityRoutes from "./routes/communityRoute.js";
 import messageRoutes from "./routes/messageRoute.js";
+import reportRoutes from "./routes/reportRoute.js";
 import { connectDB } from "./config/db.js";
 import http from "http";
 import { initSocket } from "./socket.js";
@@ -23,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
 app.use("/api/community", communityRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/uploads", express.static("uploads"));
 
 
