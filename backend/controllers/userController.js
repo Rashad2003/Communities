@@ -57,3 +57,15 @@ export const loginUser = async (req, res) => {
   
     res.json({ token, user });
 }
+
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await userModel
+      .find()
+      .select("_id name email");
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch users" });
+  }
+};

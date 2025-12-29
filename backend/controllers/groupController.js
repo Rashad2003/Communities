@@ -1,6 +1,7 @@
 import groupModel from "../models/groupModel.js";
 import communityModel from "../models/communityModel.js";
 import messageModel from "../models/messageModel.js";
+import userModel from "../models/userModel.js";
 import { getIO } from "../socket.js";
 
 /* ==============================
@@ -30,9 +31,6 @@ export const createGroups = async (req, res) => {
   // 🔥 emit real-time event
 const io = getIO();
 io.emit("groupCreated", group);
-
-res.json(group);
-
 
   res.json(group);
 };
@@ -215,7 +213,52 @@ export const removeMember = async (req, res) => {
   userId: userId.toString()
 });
 
+io.to(userId.toString()).emit("kickedNotification", {
+  message: `You were removed from ${group.name} Group by Admin`
+});
+
+
   res.json({ success: true });
 };
 
 
+export const addingMember = async (req, res) => {
+  const { groupId, userId } = req.params;
+  const adminId = req.user.id;
+
+  const group = await groupModel.findById(groupId);
+
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  // only admin can add
+  const isAdmin = group.admins.some(
+    a => a.toString() === adminId.toString()
+  );
+
+  if (!isAdmin) {
+    return res.status(403).json({ message: "Not authorized" });
+  }
+
+  const user = await userModel
+  .findById(userId)
+  .select("_id name");
+
+  // already member
+  if (group.members.includes(userId)) {
+    return res.status(400).json({ message: "User already a member" });
+  }
+
+  group.members.push(userId);
+  await group.save();
+
+  // 🔥 realtime update
+  const io = getIO();
+  io.to(groupId.toString()).emit("memberAdded", {
+    groupId: groupId.toString(),
+    user
+  });
+
+  res.json({ success: true });
+};

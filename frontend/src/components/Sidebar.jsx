@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import API from "../api/api";
 import { getUser } from "../utils/auth";
 import { TfiAnnouncement } from "react-icons/tfi";
 import { FaUserGroup } from "react-icons/fa6";
 import { MdGroupAdd } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
+import socket from "../socket.js";
 
 const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications, setNotifications }) => {
   const user = getUser();
@@ -18,6 +19,67 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
   const [showMemberMenu, setShowMemberMenu] = useState(false);
 const [showNotifications, setShowNotifications] = useState(false);
 
+
+useEffect(() => {
+  if (!user?._id) return;
+
+  if (socket.connected) {
+    socket.emit("joinUser", user._id);
+    console.log("👤 joinUser emitted:", user._id);
+  } else {
+    socket.on("connect", () => {
+      socket.emit("joinUser", user._id);
+      console.log("👤 joinUser emitted after connect:", user._id);
+    });
+  }
+}, [user]);
+
+useEffect(() => {
+  const stored = JSON.parse(localStorage.getItem("notifications")) || [];
+
+  const now = Date.now();
+  const valid = stored.filter(
+    n => now - n.createdAt < 24 * 60 * 60 * 1000
+  );
+
+  setNotifications(valid);
+  localStorage.setItem("notifications", JSON.stringify(valid));
+}, []);
+
+useEffect(() => {
+  const interval = setInterval(() => {
+    setNotifications(prev => {
+      const now = Date.now();
+      const valid = prev.filter(
+        n => now - n.createdAt < 24 * 60 * 60 * 1000
+      );
+      localStorage.setItem("notifications", JSON.stringify(valid));
+      return valid;
+    });
+  }, 60 * 1000); // every 1 minute
+
+  return () => clearInterval(interval);
+}, []);
+
+useEffect(() => {
+  socket.on("kickedNotification", data => {
+    console.log("🔔 RECEIVED:", data);
+    const newNotification = {
+      id: Date.now(),
+      message: data.message,
+      createdAt: Date.now()
+    };
+
+    setNotifications(prev => {
+      console.log("📦 ADDING TO STATE");
+      const updated = [newNotification, ...prev];
+      localStorage.setItem("notifications", JSON.stringify(updated));
+      return updated;
+    });
+  });
+
+  return () => socket.off("kickedNotification");
+}, []);
 
   /* ---------- HELPERS (IMPORTANT) ---------- */
   const isCommunityAdmin = groups.some(
@@ -60,7 +122,7 @@ const [showNotifications, setShowNotifications] = useState(false);
           }}
           className="w-full text-left px-4 py-2 hover:bg-gray-100"
         >
-          🔔 Notifications
+          🔔 Notifications - {notifications.length}
         </button>
       </div>
     )}

@@ -8,7 +8,7 @@ import { IoIosArrowDown } from "react-icons/io";
 import { IoMdArrowBack } from "react-icons/io";
 import GroupInfoModal from "./GroupInfoModal.jsx";
 
-const ChatWindow = ({ group, setGroups, communityAdmins, setActiveGroup, isMobile }) => {
+const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup, isMobile }) => {
   const [messages, setMessages] = useState([]);
   const [typingUser, setTypingUser] = useState("");
   const user = getUser();
@@ -242,13 +242,13 @@ useEffect(() => {
         </div>
       )}
 
-      if (!group.isAnnouncement && !isMember) {
-  return (
-    <div className="flex items-center justify-center h-full text-gray-500">
-      You are no longer a member of this group
-    </div>
-  );
-}
+//       if (!group.isAnnouncement && !isMember) {
+//   return (
+//     <div className="flex items-center justify-center h-full text-gray-500">
+//       You are no longer a member of this group
+//     </div>
+//   );
+// }
 
   return (
     <div className="flex-1 w-full flex flex-col relative overflow-y-hidden">
@@ -320,7 +320,9 @@ useEffect(() => {
   )}
   {showGroupInfo && (
   <GroupInfoModal
-    group={group}
+  groupId={group._id}
+  group1={group}
+    groups={groups}
     onClose={() => setShowGroupInfo(false)}
   />
 )}

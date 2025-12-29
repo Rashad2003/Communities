@@ -1,7 +1,6 @@
 import express from "express";
-import { addMember, createGroups, deleteGroup, getGroups, approvedMember, rejectRequest, removeMember } from "../controllers/groupController.js";
+import { addMember, createGroups, deleteGroup, getGroups, approvedMember, rejectRequest, removeMember, addingMember } from "../controllers/groupController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
-import roleMiddleware from "../middlewares/roleMiddleware.js";
 
 const router = express.Router();
 
@@ -9,7 +8,6 @@ const router = express.Router();
 router.post(
   "/",
   authMiddleware,
-  roleMiddleware("admin", "instructor"),
   createGroups
   );
 
@@ -41,6 +39,11 @@ router.post(
   removeMember
 );
 
+router.post(
+  "/:groupId/add/:userId",
+  authMiddleware,
+  addingMember
+);
 
 
 export default router;

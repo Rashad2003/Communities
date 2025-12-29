@@ -204,8 +204,29 @@ useEffect(() => {
 }, [activeGroup]);
 
 
+useEffect(() => {
+  socket.on("memberAdded", ({ groupId, user }) => {
+    setGroups(prev =>
+      prev.map(g => {
+        if (g._id !== groupId) return g;
 
+        // 🔥 PREVENT DUPLICATES + ENSURE FULL OBJECT
+        const exists = g.members.some(
+          m => m._id === user._id
+        );
 
+        if (exists) return g;
+
+        return {
+          ...g,
+          members: [...g.members, user]
+        };
+      })
+    );
+  });
+
+  return () => socket.off("memberAdded");
+}, []);
 
 
 
@@ -229,7 +250,7 @@ useEffect(() => {
       )}
 
       {(!isMobile || activeGroup) && activeGroup && (
-        <ChatWindow group={activeGroup} setActiveGroup={setActiveGroup} setGroups={setGroups} communityAdmins={communityAdmin} isMobile={isMobile} />
+        <ChatWindow group={activeGroup} groups={groups} setActiveGroup={setActiveGroup} setGroups={setGroups} communityAdmins={communityAdmin} isMobile={isMobile} />
       )}
     </div>
   );

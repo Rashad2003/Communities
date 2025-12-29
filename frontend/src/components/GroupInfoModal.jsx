@@ -2,11 +2,16 @@ import { BsThreeDotsVertical } from "react-icons/bs";
 import { getUser } from "../utils/auth";
 import API from "../api/api";
 import { useState } from "react";
+import AddMemberModal from "./AddMemberModal";
 
-const GroupInfoModal = ({ group, onClose }) => {
+const GroupInfoModal = ({ group1, groups, groupId, onClose }) => {
   const user = getUser();
-  const isAdmin = group.admins.some(a => a._id === user._id);
+  const isAdmin = group1.admins.some(a => a._id === user._id);
   const [openMenu, setOpenMenu] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+
+  const group = groups.find(g => g._id === groupId);
 
   const removeMember = async (memberId) => {
     await API.post(`/groups/${group._id}/remove/${memberId}`);
@@ -33,6 +38,24 @@ const GroupInfoModal = ({ group, onClose }) => {
           <p className="text-sm text-gray-500">About</p>
           <p>{group.bio || "No description"}</p>
         </div>
+
+        {isAdmin && (
+  <button
+    onClick={() => setShowAddModal(true)}
+    className="mb-3 bg-secondary text-white px-3 py-1 rounded"
+  >
+    ➕ Add Member
+  </button>
+)}
+
+{showAddModal && (
+  <AddMemberModal
+    group={group1}
+    onClose={() => setShowAddModal(false)}
+  />
+)}
+
+
 
         {/* MEMBERS */}
         <div>

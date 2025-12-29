@@ -19,6 +19,11 @@ export const initSocket = server => {
       socket.join(groupId);
     });
 
+    socket.on("joinUser", userId => {
+      socket.join(userId);
+      console.log("👤 User joined personal room:", userId);
+    });
+
     socket.on("typing", ({ groupId, user }) => {
       socket.to(groupId).emit("typing", user);
     });
