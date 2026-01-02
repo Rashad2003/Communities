@@ -3,8 +3,17 @@ import groupModel from "../models/groupModel.js";
 import { getIO } from "../socket.js";
 
 export const getMessage = async (req, res) => {
-    const messages = await messageModel.find({
-    groupId: req.params.groupId
+  const messages = await messageModel.find({
+    groupId: req.params.groupId,
+    parentId: null // Only fetch top-level messages
+  }).populate("sender", "name");
+
+  res.json(messages);
+};
+
+export const getThreadMessages = async (req, res) => {
+  const messages = await messageModel.find({
+    parentId: req.params.parentId
   }).populate("sender", "name");
 
   res.json(messages);
@@ -30,27 +39,44 @@ export const sendMessage = async (req, res) => {
         ? "image"
         : "file";
       finalContent = `/uploads/${req.file.filename}`;
+    } else if (req.body.type === "poll") {
+      finalType = "poll";
+      finalContent = "📊 Poll";
+    } else if (req.body.type === "event") {
+      finalType = "event";
+      finalContent = "📅 Event";
     } else {
       finalType = "text";
       finalContent = req.body.content;
     }
 
-    const message = await messageModel.create({
+    const messageData = {
       groupId,
       sender: req.user.id,
       type: finalType,
-      content: finalContent
-    });
+      content: finalContent,
+      parentId: req.body.parentId || null
+    };
+
+    if (finalType === "poll") {
+      messageData.pollData = JSON.parse(req.body.pollData);
+    } else if (finalType === "event") {
+      messageData.eventData = JSON.parse(req.body.eventData);
+    }
+
+    const message = await messageModel.create(messageData);
+
+    if (req.body.parentId) {
+      await messageModel.findByIdAndUpdate(req.body.parentId, {
+        $inc: { replyCount: 1 }
+      });
+    }
 
     // 🔥 EMIT REAL-TIME
     const io = getIO();
     io.to(groupId).emit("newMessage", {
-      _id: message._id,
-      groupId,
-      sender: { _id: req.user.id, name: req.user.name },
-      type: finalType,
-      content: finalContent,
-      createdAt: message.createdAt
+      ...message.toObject(),
+      sender: { _id: req.user.id, name: req.user.name }
     });
 
     res.json(message);
@@ -60,6 +86,67 @@ export const sendMessage = async (req, res) => {
   }
 };
 
+
+export const votePoll = async (req, res) => {
+  const { messageId, optionIndex } = req.body;
+  const userId = req.user.id;
+
+  const message = await messageModel.findById(messageId);
+  if (!message || message.type !== "poll") return res.status(404).json({ message: "Poll not found" });
+
+  const poll = message.pollData;
+  const option = poll.options[optionIndex];
+
+  // Check if already voted
+  const alreadyVotedIndex = poll.options.findIndex(opt => opt.votes.includes(userId));
+
+  if (alreadyVotedIndex !== -1) {
+    // Remove previous vote
+    poll.options[alreadyVotedIndex].votes.pull(userId);
+  }
+
+  // Toggle vote if clicking same option, else add vote
+  if (alreadyVotedIndex !== optionIndex) {
+    option.votes.push(userId);
+  }
+
+  await message.save();
+
+  const io = getIO();
+  io.to(message.groupId.toString()).emit("pollUpdated", {
+    messageId: message._id,
+    pollData: message.pollData
+  });
+
+  res.json(message);
+};
+
+export const joinEvent = async (req, res) => {
+  const { messageId } = req.body;
+  const userId = req.user.id;
+
+  const message = await messageModel.findById(messageId);
+  if (!message || message.type !== "event") return res.status(404).json({ message: "Event not found" });
+
+  const attendees = message.eventData.attendees;
+  const isAttending = attendees.includes(userId);
+
+  if (isAttending) {
+    attendees.pull(userId);
+  } else {
+    attendees.push(userId);
+  }
+
+  await message.save();
+
+  const io = getIO();
+  io.to(message.groupId.toString()).emit("eventUpdated", {
+    messageId: message._id,
+    eventData: message.eventData
+  });
+
+  res.json(message);
+};
 
 export const files = async (req, res) => {
   const { groupId, type, content } = req.body;
@@ -76,18 +163,18 @@ export const files = async (req, res) => {
   let finalContent = content;
   let finalType = type || "text";
 
-if (req.file) {
-      finalType = req.file.mimetype.startsWith("image")
-        ? "image"
-        : "file";
+  if (req.file) {
+    finalType = req.file.mimetype.startsWith("image")
+      ? "image"
+      : "file";
 
-      finalContent = `/uploads/${req.file.filename}`;
-    } 
-    // 📝 TEXT MESSAGE
-    else {
-      finalType = "text";
-      finalContent = req.body.content;
-    }
+    finalContent = `/uploads/${req.file.filename}`;
+  }
+  // 📝 TEXT MESSAGE
+  else {
+    finalType = "text";
+    finalContent = req.body.content;
+  }
 
   const message = await messageModel.create({
     groupId,
@@ -181,11 +268,18 @@ export const deleteMessage = async (req, res) => {
     return res.status(403).json({ message: "Not allowed" });
   }
 
+  if (message.parentId) {
+    await messageModel.findByIdAndUpdate(message.parentId, {
+      $inc: { replyCount: -1 }
+    });
+  }
+
   await message.deleteOne();
 
   const io = getIO();
   io.to(group._id.toString()).emit("messageDeleted", {
-    messageId: message._id
+    messageId: message._id,
+    parentId: message.parentId
   });
 
   res.json({ success: true });

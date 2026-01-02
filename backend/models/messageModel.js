@@ -7,13 +7,36 @@ const messageSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["text", "image", "file", "emoji"],
+      enum: ["text", "image", "file", "emoji", "poll", "event"],
       default: "text"
     },
 
     content: String, // text OR file URL
-    
-    isPinned: { type: Boolean, default: false }
+
+    // 📊 POLL DATA
+    pollData: {
+      question: String,
+      options: [
+        {
+          text: String,
+          votes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+        }
+      ],
+      allowMultiple: { type: Boolean, default: false }
+    },
+
+    // 📅 EVENT DATA
+    eventData: {
+      title: String,
+      description: String,
+      date: Date,
+      location: String,
+      attendees: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+    },
+
+    isPinned: { type: Boolean, default: false },
+    parentId: { type: mongoose.Schema.Types.ObjectId, ref: "Message", default: null }, // for threading
+    replyCount: { type: Number, default: 0 }
   },
   { timestamps: true }
 );

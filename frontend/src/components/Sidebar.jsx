@@ -18,70 +18,70 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
   const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [showAdminMenu, setShowAdminMenu] = useState(false);
   const [showMemberMenu, setShowMemberMenu] = useState(false);
-const [showNotifications, setShowNotifications] = useState(false);
-const [showReportsModal, setShowReportsModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showReportsModal, setShowReportsModal] = useState(false);
 
 
-useEffect(() => {
-  if (!user?._id) return;
+  useEffect(() => {
+    if (!user?._id) return;
 
-  if (socket.connected) {
-    socket.emit("joinUser", user._id);
-    console.log("👤 joinUser emitted:", user._id);
-  } else {
-    socket.on("connect", () => {
+    if (socket.connected) {
       socket.emit("joinUser", user._id);
-      console.log("👤 joinUser emitted after connect:", user._id);
+      console.log("👤 joinUser emitted:", user._id);
+    } else {
+      socket.on("connect", () => {
+        socket.emit("joinUser", user._id);
+        console.log("👤 joinUser emitted after connect:", user._id);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("notifications")) || [];
+
+    const now = Date.now();
+    const valid = stored.filter(
+      n => now - n.createdAt < 24 * 60 * 60 * 1000
+    );
+
+    setNotifications(valid);
+    localStorage.setItem("notifications", JSON.stringify(valid));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNotifications(prev => {
+        const now = Date.now();
+        const valid = prev.filter(
+          n => now - n.createdAt < 24 * 60 * 60 * 1000
+        );
+        localStorage.setItem("notifications", JSON.stringify(valid));
+        return valid;
+      });
+    }, 60 * 1000); // every 1 minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    socket.on("kickedNotification", data => {
+      console.log("🔔 RECEIVED:", data);
+      const newNotification = {
+        id: Date.now(),
+        message: data.message,
+        createdAt: Date.now()
+      };
+
+      setNotifications(prev => {
+        console.log("📦 ADDING TO STATE");
+        const updated = [newNotification, ...prev];
+        localStorage.setItem("notifications", JSON.stringify(updated));
+        return updated;
+      });
     });
-  }
-}, [user]);
 
-useEffect(() => {
-  const stored = JSON.parse(localStorage.getItem("notifications")) || [];
-
-  const now = Date.now();
-  const valid = stored.filter(
-    n => now - n.createdAt < 24 * 60 * 60 * 1000
-  );
-
-  setNotifications(valid);
-  localStorage.setItem("notifications", JSON.stringify(valid));
-}, []);
-
-useEffect(() => {
-  const interval = setInterval(() => {
-    setNotifications(prev => {
-      const now = Date.now();
-      const valid = prev.filter(
-        n => now - n.createdAt < 24 * 60 * 60 * 1000
-      );
-      localStorage.setItem("notifications", JSON.stringify(valid));
-      return valid;
-    });
-  }, 60 * 1000); // every 1 minute
-
-  return () => clearInterval(interval);
-}, []);
-
-useEffect(() => {
-  socket.on("kickedNotification", data => {
-    console.log("🔔 RECEIVED:", data);
-    const newNotification = {
-      id: Date.now(),
-      message: data.message,
-      createdAt: Date.now()
-    };
-
-    setNotifications(prev => {
-      console.log("📦 ADDING TO STATE");
-      const updated = [newNotification, ...prev];
-      localStorage.setItem("notifications", JSON.stringify(updated));
-      return updated;
-    });
-  });
-
-  return () => socket.off("kickedNotification");
-}, []);
+    return () => socket.off("kickedNotification");
+  }, []);
 
   /* ---------- HELPERS (IMPORTANT) ---------- */
   const isCommunityAdmin = groups.some(
@@ -103,12 +103,12 @@ useEffect(() => {
   ];
 
   useEffect(() => {
-  socket.on("newReport", () => {
-    console.log("🚩 New report received");
-  });
+    socket.on("newReport", () => {
+      console.log("🚩 New report received");
+    });
 
-  return () => socket.off("newReport");
-}, []);
+    return () => socket.off("newReport");
+  }, []);
 
 
   return (
@@ -119,73 +119,72 @@ useEffect(() => {
         <span className="text-lg font-semibold">LMS Community</span>
 
         {!isCommunityAdmin && (
-  <div className="relative">
-    <button onClick={() => setShowMemberMenu(p => !p)}>
-      <BsThreeDotsVertical />
-    </button>
+          <div className="relative">
+            <button onClick={() => setShowMemberMenu(p => !p)}>
+              <BsThreeDotsVertical />
+            </button>
 
-    {showMemberMenu && (
-      <div className="absolute right-0 mt-2 bg-white text-black border rounded shadow w-48 z-50">
-        <button
-          onClick={() => {
-            setShowNotifications(true);
-            setShowMemberMenu(false);
-          }}
-          className="w-full text-left px-4 py-2 hover:bg-gray-100"
-        >
-          🔔 Notifications - {notifications.length}
-        </button>
-      </div>
-    )}
-  </div>
-)}
-
-{showNotifications && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-    <div className="bg-white w-96 max-h-[80vh] rounded-lg p-4 overflow-y-auto">
-      <div className="flex justify-between items-center mb-4">
-      <h2 className="text-lg font-semibold mb-3 text-black">
-        Notifications
-      </h2>
-      <button
-  onClick={() => setNotifications([])}
-  className="text-sm text-red-500"
->
-  Clear All
-</button>
-
-      </div>
-
-      {notifications.length === 0 ? (
-        <p className="text-gray-500 text-sm">
-          No notifications
-        </p>
-      ) : (
-        notifications.map(n => (
-          <div
-            key={n.id}
-            className={`mb-2 p-3 rounded text-sm ${
-              n.type === "approved"
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
-            }`}
-          >
-            {n.message}
+            {showMemberMenu && (
+              <div className="absolute right-0 mt-2 bg-white text-black border rounded shadow w-48 z-50">
+                <button
+                  onClick={() => {
+                    setShowNotifications(true);
+                    setShowMemberMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                >
+                  🔔 Notifications - {notifications.length}
+                </button>
+              </div>
+            )}
           </div>
-        ))
-      )}
+        )}
 
-      <div className="text-right mt-4">
-        <button
-          onClick={() => setShowNotifications(false)}
-          className="text-gray-600"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        {showNotifications && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white w-96 max-h-[80vh] rounded-lg p-4 overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold mb-3 text-black">
+                  Notifications
+                </h2>
+                <button
+                  onClick={() => setNotifications([])}
+                  className="text-sm text-red-500"
+                >
+                  Clear All
+                </button>
+
+              </div>
+
+              {notifications.length === 0 ? (
+                <p className="text-gray-500 text-sm">
+                  No notifications
+                </p>
+              ) : (
+                notifications.map(n => (
+                  <div
+                    key={n.id}
+                    className={`mb-2 p-3 rounded text-sm ${n.type === "approved"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                      }`}
+                  >
+                    {n.message}
+                  </div>
+                ))
+              )}
+
+              <div className="text-right mt-4">
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="text-gray-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isCommunityAdmin && (
           <div className="relative">
@@ -252,31 +251,31 @@ useEffect(() => {
 
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-gray-500">Tap to open chat</p>
-                   {/* JOIN BUTTON */}
-                {!group.isAnnouncement &&
-                  !isCommunityAdmin &&
-                  !isMember(group) &&
-                  !isPending(group) && (
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        setSelectedGroup(group);
-                        setShowJoinModal(true);
-                      }}
-                      className="text-sm text-red-400 mt-1 border px-2 py-1 rounded hover:bg-blue-100"
-                    >
-                      Join
-                    </button>
-                  )}
+                  {/* JOIN BUTTON */}
+                  {!group.isAnnouncement &&
+                    !isCommunityAdmin &&
+                    !isMember(group) &&
+                    !isPending(group) && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setSelectedGroup(group);
+                          setShowJoinModal(true);
+                        }}
+                        className="text-sm text-red-400 mt-1 border px-2 py-1 rounded hover:bg-blue-100"
+                      >
+                        Join
+                      </button>
+                    )}
 
-                {/* PENDING */}
-                {!group.isAnnouncement &&
-                  !isCommunityAdmin &&
-                  isPending(group) && (
-                    <span className="text-sm text-orange-400 mt-1 border px-2 py-1 rounded hover:bg-blue-100">
-                      Pending
-                    </span>
-                  )}
+                  {/* PENDING */}
+                  {!group.isAnnouncement &&
+                    !isCommunityAdmin &&
+                    isPending(group) && (
+                      <span className="text-sm text-orange-400 mt-1 border px-2 py-1 rounded hover:bg-blue-100">
+                        Pending
+                      </span>
+                    )}
                 </div>
               </div>
 
@@ -294,7 +293,7 @@ useEffect(() => {
           );
         })}
       </div>
-      {showCreateModal && ( <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"> <div className="bg-white w-80 p-5 rounded-lg"> <h2 className="text-lg font-semibold mb-4">Create New Group</h2> <input type="text" placeholder="Group name" className="w-full border p-2 rounded mb-4" value={groupName} onChange={e => setGroupName(e.target.value)} /> <div className="flex justify-end gap-2"> <button onClick={() => { setShowCreateModal(false); setGroupName(""); }} className="px-4 py-2 text-gray-600" > Cancel </button> <button onClick={async () => { if (!groupName.trim()) return; const res = await API.post("/groups", { name: groupName }); setActiveGroup(res.data); setGroupName(""); setShowCreateModal(false); }} className="px-4 py-2 bg-secondary text-white rounded" > Create </button> </div> </div> </div> )}
+      {showCreateModal && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"> <div className="bg-white w-80 p-5 rounded-lg"> <h2 className="text-lg font-semibold mb-4">Create New Group</h2> <input type="text" placeholder="Group name" className="w-full border p-2 rounded mb-4" value={groupName} onChange={e => setGroupName(e.target.value)} /> <div className="flex justify-end gap-2"> <button onClick={() => { setShowCreateModal(false); setGroupName(""); }} className="px-4 py-2 text-gray-600" > Cancel </button> <button onClick={async () => { if (!groupName.trim()) return; const res = await API.post("/groups", { name: groupName }); setActiveGroup(res.data); setGroupName(""); setShowCreateModal(false); }} className="px-4 py-2 bg-secondary text-white rounded" > Create </button> </div> </div> </div>)}
 
       {/* JOIN MODAL */}
       {showJoinModal && selectedGroup && (
@@ -312,10 +311,25 @@ useEffect(() => {
 
               <button
                 onClick={async () => {
-                  await API.post(
-                    `/groups/${selectedGroup._id}/request`
-                  );
-                  setShowJoinModal(false);
+                  try {
+                    await API.post(`/groups/${selectedGroup._id}/request`);
+
+                    // Optimistic update
+                    setGroups(prev => prev.map(g => {
+                      if (g._id === selectedGroup._id) {
+                        return {
+                          ...g,
+                          pendingRequests: [...g.pendingRequests, { _id: user._id }]
+                        };
+                      }
+                      return g;
+                    }));
+
+                    setShowJoinModal(false);
+                  } catch (err) {
+                    console.error("Join request failed", err);
+                    alert("Failed to send join request");
+                  }
                 }}
                 className="bg-secondary text-white px-3 py-1 rounded"
               >
