@@ -46,14 +46,20 @@ const ThreadView = ({ parentMessage, onClose, group }) => {
             setReplies(prev => prev.map(msg => msg._id === messageId ? { ...msg, eventData } : msg));
         };
 
+        const handleReactionUpdated = ({ messageId, reactions }) => {
+            setReplies(prev => prev.map(msg => msg._id === messageId ? { ...msg, reactions } : msg));
+        };
+
         socket.on("messageDeleted", handleMessageDeleted);
         socket.on("pollUpdated", handlePollUpdated);
         socket.on("eventUpdated", handleEventUpdated);
+        socket.on("reactionUpdated", handleReactionUpdated);
 
         return () => {
             socket.off("messageDeleted", handleMessageDeleted);
             socket.off("pollUpdated", handlePollUpdated);
             socket.off("eventUpdated", handleEventUpdated);
+            socket.off("reactionUpdated", handleReactionUpdated);
         };
     }, [parentMessage._id]);
 

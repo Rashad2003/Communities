@@ -8,6 +8,8 @@ import { IoIosArrowDown } from "react-icons/io";
 import { IoMdArrowBack } from "react-icons/io";
 import GroupInfoModal from "./GroupInfoModal.jsx";
 import ThreadView from "./ThreadView.jsx";
+import { FaInfoCircle, FaFolderOpen } from "react-icons/fa";
+import ResourcesModal from "./ResourcesModal.jsx";
 
 const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup, isMobile }) => {
   const [messages, setMessages] = useState([]);
@@ -20,6 +22,7 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
   const [pinnedMessage, setPinnedMessage] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const [showResources, setShowResources] = useState(false);
   const [activeThread, setActiveThread] = useState(null);
   const menuRef = useRef(null);
 
@@ -246,8 +249,17 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
       setActiveGroup(null);
     });
 
-    return () => socket.off("groupDeleted");
-  }, []);
+    socket.on("memberRemoved", ({ groupId, userId }) => {
+      if (groupId === group._id && userId === user._id) {
+        setActiveGroup(null); // Kick user out of view
+      }
+    });
+
+    return () => {
+      socket.off("groupDeleted");
+      socket.off("memberRemoved");
+    };
+  }, [group._id]);
 
   useEffect(() => {
     const handlePollUpdated = ({ messageId, pollData }) => {
@@ -266,12 +278,22 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
       );
     };
 
+    const handleReactionUpdated = ({ messageId, reactions }) => {
+      setMessages(prev =>
+        prev.map(msg =>
+          msg._id === messageId ? { ...msg, reactions } : msg
+        )
+      );
+    };
+
     socket.on("pollUpdated", handlePollUpdated);
     socket.on("eventUpdated", handleEventUpdated);
+    socket.on("reactionUpdated", handleReactionUpdated);
 
     return () => {
       socket.off("pollUpdated", handlePollUpdated);
       socket.off("eventUpdated", handleEventUpdated);
+      socket.off("reactionUpdated", handleReactionUpdated);
     };
   }, []);
 
@@ -315,67 +337,81 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
             </button>
           )}
 
-          <h2 className="font-semibold text-lg">
+          <h2 className="font-semibold text-lg flex-1">
             {group.name}
           </h2>
-          {/* {group.isAnnouncement && (
-          <span className="text-sm ml-2">(Announcements)</span>
-        )} */}
-          {isCommunityAdmin && (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowMenu(prev => !prev)}
-                className="text-xl px-2"
-              >
-                ⋮
-              </button>
 
-              {showMenu && (
-                <div className="absolute right-0 mt-2 bg-white text-black border rounded shadow w-48 z-50">
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setShowMenu(prev => !prev)}
+              className="text-xl px-2"
+            >
+              ⋮
+            </button>
 
-                  <button
-                    onClick={() => {
-                      setShowGroupInfo(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    Group Info
-                  </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 bg-white text-black border rounded shadow w-48 z-50">
 
-                  <button
-                    onClick={async () => {
-                      await API.delete(`/messages/clear/${group._id}`);
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100"
-                  >
-                    🧹 Clear chat
-                  </button>
+                {isCommunityAdmin && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowGroupInfo(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <FaInfoCircle /> Group Info
+                    </button>
 
-                  <button
-                    onClick={async () => {
-                      if (!confirm("Delete this group permanently?")) return;
+                    <button
+                      onClick={async () => {
+                        await API.delete(`/messages/clear/${group._id}`);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    >
+                      🧹 Clear chat
+                    </button>
 
-                      await API.delete(`/groups/${group._id}`);
-                      setShowMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                  >
-                    🗑️ Delete group
-                  </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Delete this group permanently?")) return;
 
-                </div>
+                        await API.delete(`/groups/${group._id}`);
+                        setShowMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                    >
+                      🗑️ Delete group
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => {
+                    setShowResources(true);
+                    setShowMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <FaFolderOpen /> Class Resources
+                </button>
 
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
           {showGroupInfo && (
             <GroupInfoModal
               groupId={group._id}
               group1={group}
               groups={groups}
               onClose={() => setShowGroupInfo(false)}
+            />
+          )}
+          {showResources && (
+            <ResourcesModal
+              groupId={group._id}
+              onClose={() => setShowResources(false)}
             />
           )}
         </div>

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const GroupSchema = new mongoose.Schema(
   {
     name: String,
+    description: String,
     isAnnouncement: { type: Boolean, default: false },
     admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

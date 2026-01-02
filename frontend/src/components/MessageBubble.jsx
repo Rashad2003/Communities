@@ -1,7 +1,7 @@
 import { getUser } from "../utils/auth";
 import API from "../api/api";
 import { useEffect, useRef, useState } from "react";
-import { IoIosArrowDown } from "react-icons/io";
+import { IoIosArrowDown, IoMdClose } from "react-icons/io";
 import { FaFileAlt } from "react-icons/fa";
 import ReportModal from "./reportModal";
 
@@ -52,24 +52,44 @@ const MessageBubble = ({ message, isMe, isAdmin, onReply = () => { }, hideReply 
             </div>
           )}
 
+          {/* MESSAGE CONTENT */}
           {message.type === "text" && (
-            <p>{message.content}</p>
+            <p
+              dangerouslySetInnerHTML={{
+                __html: message.content.replace(
+                  /(@\w+)/g,
+                  '<span class="text-blue-500 font-bold">$1</span>'
+                )
+              }}
+            />
           )}
 
           {message.type === "image" && (
-            <img
-              src={`http://localhost:4001${message.content}`}
-              alt="img"
-              className="rounded max-w-full"
-            />
+            <div className="rounded-xl overflow-hidden shadow-sm border bg-gray-100">
+              <img
+                src={`http://localhost:4001${message.content}`}
+                alt="attachment"
+                className="max-w-full max-h-80 object-cover"
+              />
+            </div>
           )}
 
           {message.type === "file" && (
             <a
               href={`http://localhost:4001${message.content}`}
               target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 bg-gray-50 border rounded-xl hover:bg-gray-100 transition-colors group text-left min-w-[200px]"
             >
-              <FaFileAlt className="text-5xl p-1 border rounded-full" />
+              <div className="bg-red-50 p-2 rounded-lg text-red-500 group-hover:bg-red-100 transition-colors">
+                <FaFileAlt className="text-xl" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate text-gray-800">
+                  {message.content.split("/").pop()}
+                </div>
+                <div className="text-xs text-gray-500">Click to view</div>
+              </div>
             </a>
           )}
 
@@ -148,8 +168,8 @@ const MessageBubble = ({ message, isMe, isAdmin, onReply = () => { }, hideReply 
                     await API.post("/messages/join-event", { messageId: message._id });
                   }}
                   className={`text-xs px-3 py-1 rounded font-semibold border ${message.eventData.attendees.includes(user._id)
-                      ? "bg-white text-green-600 border-green-600"
-                      : "bg-green-600 text-white border-transparent"
+                    ? "bg-white text-green-600 border-green-600"
+                    : "bg-green-600 text-white border-transparent"
                     }`}
                 >
                   {message.eventData.attendees.includes(user._id) ? "✓ Going" : "Join"}
@@ -157,6 +177,39 @@ const MessageBubble = ({ message, isMe, isAdmin, onReply = () => { }, hideReply 
               </div>
             </div>
           )}
+
+          {/* REACTIONS */}
+          {message.reactions && message.reactions.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2 -mb-2 relative z-10">
+              {Object.entries(
+                message.reactions.reduce((acc, r) => {
+                  acc[r.emoji] = (acc[r.emoji] || 0) + 1;
+                  return acc;
+                }, {})
+              ).map(([emoji, count]) => {
+                const iReacted = message.reactions.some(
+                  r => r.emoji === emoji && r.user === user._id
+                );
+                return (
+                  <button
+                    key={emoji}
+                    onClick={async () => {
+                      await API.post("/messages/react", {
+                        messageId: message._id,
+                        emoji
+                      });
+                    }}
+                    className={`text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-1 hover:bg-gray-100 transition-colors ${iReacted ? "bg-blue-100 border-blue-300" : "bg-white"
+                      }`}
+                  >
+                    <span>{emoji}</span>
+                    <span className="text-gray-600">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
 
           <div className="text-[10px] opacity-60 mt-1 text-right">
             {new Date(message.createdAt).toLocaleTimeString([], {
@@ -192,6 +245,39 @@ const MessageBubble = ({ message, isMe, isAdmin, onReply = () => { }, hideReply 
                   {message.isPinned ? "❌ Unpin" : "📌 Pin"}
                 </button>
               )}
+
+              {/* QUICK REACTION */}
+              <div className="px-3 py-2 flex justify-between border-b">
+                {["👍", "❤️", "😂", "😮"].map(emoji => {
+                  const iReacted = message.reactions?.some(
+                    r => r.emoji === emoji && r.user === user._id
+                  );
+                  return (
+                    <button
+                      key={emoji}
+                      onClick={async () => {
+                        await API.post("/messages/react", { messageId: message._id, emoji });
+                        setShowMenu(false);
+                      }}
+                      className="hover:scale-125 transition-transform relative"
+                    >
+                      {emoji}
+                      {iReacted && (
+                        <div
+                          onClick={async (e) => {
+                            e.stopPropagation(); // Stop parent button click
+                            await API.delete("/messages/react/remove", { data: { messageId: message._id, emoji } });
+                            setShowMenu(false);
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 rounded-full p-[1px] text-white cursor-pointer hover:bg-red-600 z-10"
+                        >
+                          <IoMdClose className="text-[10px]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* DELETE */}
               {canDelete && (

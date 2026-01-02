@@ -1,5 +1,5 @@
 import express from "express";
-import { clearGroupMessages, deleteMessage, getMessage, getPinnedMessage, pinMessage, sendMessage, togglePinMessage, getThreadMessages, votePoll, joinEvent } from "../controllers/messageController.js";
+import { clearGroupMessages, deleteMessage, getMessage, getPinnedMessage, pinMessage, sendMessage, togglePinMessage, getThreadMessages, votePoll, joinEvent, reactToMessage, removeReaction, getGroupResources } from "../controllers/messageController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/upload.js";
 
@@ -44,6 +44,9 @@ router.delete(
 
 router.post("/vote", authMiddleware, votePoll);
 router.post("/join-event", authMiddleware, joinEvent);
+router.post("/react", authMiddleware, reactToMessage);
+router.delete("/react/remove", authMiddleware, removeReaction);
+router.get("/resources/:groupId", authMiddleware, getGroupResources);
 
 
 

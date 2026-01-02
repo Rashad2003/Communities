@@ -36,24 +36,24 @@ const GroupInfoModal = ({ group1, groups, groupId, onClose }) => {
         {/* GROUP BIO */}
         <div className="mb-4">
           <p className="text-sm text-gray-500">About</p>
-          <p>{group.bio || "No description"}</p>
+          <p>{group.description || "No description"}</p>
         </div>
 
         {isAdmin && (
-  <button
-    onClick={() => setShowAddModal(true)}
-    className="mb-3 bg-secondary text-white px-3 py-1 rounded"
-  >
-    ➕ Add Member
-  </button>
-)}
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="mb-3 bg-secondary text-white px-3 py-1 rounded"
+          >
+            ➕ Add Member
+          </button>
+        )}
 
-{showAddModal && (
-  <AddMemberModal
-    group={group1}
-    onClose={() => setShowAddModal(false)}
-  />
-)}
+        {showAddModal && (
+          <AddMemberModal
+            group={group1}
+            onClose={() => setShowAddModal(false)}
+          />
+        )}
 
 
 

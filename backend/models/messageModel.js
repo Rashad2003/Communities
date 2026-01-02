@@ -34,6 +34,17 @@ const messageSchema = new mongoose.Schema(
       attendees: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
     },
 
+    // 👍 REACTIONS
+    reactions: [
+      {
+        emoji: String,
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+      }
+    ],
+
+    // @ MENTIONS
+    mentions: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+
     isPinned: { type: Boolean, default: false },
     parentId: { type: mongoose.Schema.Types.ObjectId, ref: "Message", default: null }, // for threading
     replyCount: { type: Number, default: 0 }

@@ -55,7 +55,8 @@ export const sendMessage = async (req, res) => {
       sender: req.user.id,
       type: finalType,
       content: finalContent,
-      parentId: req.body.parentId || null
+      parentId: req.body.parentId || null,
+      mentions: req.body.mentions || []
     };
 
     if (finalType === "poll") {
@@ -143,6 +144,73 @@ export const joinEvent = async (req, res) => {
   io.to(message.groupId.toString()).emit("eventUpdated", {
     messageId: message._id,
     eventData: message.eventData
+  });
+
+  res.json(message);
+};
+
+export const reactToMessage = async (req, res) => {
+  const { messageId, emoji } = req.body;
+  const userId = req.user.id;
+
+  console.log(`[REACT] User: ${userId} Message: ${messageId} Emoji: ${emoji}`);
+
+  const message = await messageModel.findById(messageId);
+  if (!message) return res.status(404).json({ message: "Message not found" });
+
+  console.log(`[REACT] Current Reactions:`, message.reactions);
+
+  // 1. Find existing reaction from this user
+  const existingReaction = message.reactions.find(r => r.user.toString() === userId);
+  console.log(`[REACT] Existing Reaction:`, existingReaction);
+
+  // 2. Remove ANY reaction from this user
+  const initialLength = message.reactions.length;
+  message.reactions = message.reactions.filter(r => r.user.toString() !== userId);
+  console.log(`[REACT] Reactions after filter:`, message.reactions.length);
+
+  // 3. If they clicked a DIFFERENT emoji (or didn't have one), add the new one.
+  //    If they clicked the SAME emoji, we do nothing (so it remains removed -> toggle off).
+  if (!existingReaction || existingReaction.emoji !== emoji) {
+    console.log(`[REACT] Adding new reaction: ${emoji}`);
+    message.reactions.push({ emoji, user: userId });
+  } else {
+    console.log(`[REACT] Toggled off (same emoji)`);
+  }
+
+  await message.save();
+
+  const io = getIO();
+  io.to(message.groupId.toString()).emit("reactionUpdated", {
+    messageId: message._id,
+    reactions: message.reactions
+  });
+
+  res.json(message);
+};
+
+export const removeReaction = async (req, res) => {
+  const { messageId, emoji } = req.body;
+  const userId = req.user.id;
+
+  console.log(`[REMOVE] User: ${userId} Message: ${messageId} Emoji: ${emoji}`);
+
+  const message = await messageModel.findByIdAndUpdate(
+    messageId,
+    {
+      $pull: { reactions: { user: userId, emoji: emoji } }
+    },
+    { new: true } // Return the updated document
+  );
+
+  if (!message) return res.status(404).json({ message: "Message not found" });
+
+  console.log(`[REMOVE] Left reactions:`, message.reactions.length);
+
+  const io = getIO();
+  io.to(message.groupId.toString()).emit("reactionUpdated", {
+    messageId: message._id,
+    reactions: message.reactions
   });
 
   res.json(message);
@@ -261,12 +329,12 @@ export const deleteMessage = async (req, res) => {
   const message = await messageModel.findById(req.params.messageId);
   const group = await groupModel.findById(message.groupId);
 
-  const isAdmin = group.admins.includes(req.user.id);
-  const isSender = message.sender.toString() === req.user.id;
+  // const isAdmin = group.admins.includes(req.user.id);
+  // const isSender = message.sender.toString() === req.user.id;
 
-  if (!isAdmin && !isSender) {
-    return res.status(403).json({ message: "Not allowed" });
-  }
+  // if (!isAdmin && !isSender) {
+  //   return res.status(403).json({ message: "Not allowed" });
+  // }
 
   if (message.parentId) {
     await messageModel.findByIdAndUpdate(message.parentId, {
@@ -299,4 +367,17 @@ export const clearGroupMessages = async (req, res) => {
   io.to(groupId).emit("chatCleared");
 
   res.json({ success: true });
+};
+
+export const getGroupResources = async (req, res) => {
+  const { groupId } = req.params;
+
+  const resources = await messageModel.find({
+    groupId,
+    type: { $in: ["image", "file"] }
+  })
+    .sort({ createdAt: -1 })
+    .populate("sender", "name");
+
+  res.json(resources);
 };

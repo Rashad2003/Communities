@@ -8,7 +8,7 @@ import { getIO } from "../socket.js";
    CREATE SUB GROUP (ADMIN ONLY)
 ================================ */
 export const createGroups = async (req, res) => {
-  const { name } = req.body;
+  const { name, description } = req.body;
 
   const community = await communityModel.findOne();
   if (!community) {
@@ -22,6 +22,7 @@ export const createGroups = async (req, res) => {
 
   const group = await groupModel.create({
     name,
+    description,
     isAnnouncement: false,
     admins: [req.user.id],
     members: [req.user.id],       // 🔥 ADMIN ALWAYS MEMBER
@@ -29,8 +30,8 @@ export const createGroups = async (req, res) => {
   });
 
   // 🔥 emit real-time event
-const io = getIO();
-io.emit("groupCreated", group);
+  const io = getIO();
+  io.emit("groupCreated", group);
 
   res.json(group);
 };
@@ -81,7 +82,7 @@ export const addMember = async (req, res) => {
 
   // 🔥 SOCKET EVENT
   const io = getIO();
-     // 🔥 notify ADMINS (ObjectId → room)
+  // 🔥 notify ADMINS (ObjectId → room)
   group.admins.forEach(adminId => {
     io.to(adminId.toString()).emit("joinRequested", {
       groupId: group._id.toString(),
@@ -126,11 +127,11 @@ export const approvedMember = async (req, res) => {
   );
 
   // ✅ Add to members (only once)
-    if (!group.members.some(m => m.toString() === userId)) {
+  if (!group.members.some(m => m.toString() === userId)) {
     group.members.push(userId);
   }
   await group.save();
-const io = getIO();
+  const io = getIO();
   // 🔥 1️⃣ notify APPROVED USER (REAL TIME)
   io.to(userId.toString()).emit("requestApproved", {
     groupId: group._id.toString(),
@@ -236,13 +237,19 @@ export const removeMember = async (req, res) => {
   // 🔥 realtime update
   const io = getIO();
   io.to(group._id.toString()).emit("memberRemoved", {
-  groupId: group._id.toString(),
-  userId: userId.toString()
-});
+    groupId: group._id.toString(),
+    userId: userId.toString()
+  });
 
-io.to(userId.toString()).emit("kickedNotification", {
-  message: `You were removed from ${group.name} Group by Admin`
-});
+  // Also notify the specific user directly (in case they aren't in the group room)
+  io.to(userId.toString()).emit("memberRemoved", {
+    groupId: group._id.toString(),
+    userId: userId.toString()
+  });
+
+  io.to(userId.toString()).emit("kickedNotification", {
+    message: `You were removed from ${group.name} Group by Admin`
+  });
 
 
   res.json({ success: true });
@@ -269,8 +276,8 @@ export const addingMember = async (req, res) => {
   }
 
   const user = await userModel
-  .findById(userId)
-  .select("_id name");
+    .findById(userId)
+    .select("_id name");
 
   // already member
   if (group.members.includes(userId)) {
@@ -282,7 +289,15 @@ export const addingMember = async (req, res) => {
 
   // 🔥 realtime update
   const io = getIO();
+
+  // Notify group
   io.to(groupId.toString()).emit("memberAdded", {
+    groupId: groupId.toString(),
+    user
+  });
+
+  // Notify the user directly (in case they aren't in the group room)
+  io.to(userId.toString()).emit("memberAdded", {
     groupId: groupId.toString(),
     user
   });

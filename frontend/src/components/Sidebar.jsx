@@ -13,6 +13,7 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showRequestsModal, setShowRequestsModal] = useState(false);
@@ -80,8 +81,46 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
       });
     });
 
-    return () => socket.off("kickedNotification");
-  }, []);
+    socket.on("memberRemoved", ({ groupId, userId }) => {
+      setGroups(prev => prev.map(g => {
+        if (g._id === groupId) {
+          // Update member list locally for EVERYONE (including me)
+          return {
+            ...g,
+            members: g.members.filter(m => String(m._id) !== String(userId))
+          };
+        }
+        return g;
+      }));
+
+      // If I was the one removed AND I'm viewing it -> Kick me out
+      if (userId === user._id && activeGroup?._id === groupId) {
+        setActiveGroup(null);
+      }
+    });
+
+    socket.on("memberAdded", ({ groupId, user: addedUser }) => {
+      setGroups(prev => prev.map(g => {
+        if (g._id === groupId) {
+          // Avoid duplicates
+          const exists = g.members.some(m => String(m._id) === String(addedUser._id));
+          if (exists) return g;
+
+          return {
+            ...g,
+            members: [...g.members, addedUser]
+          };
+        }
+        return g;
+      }));
+    });
+
+    return () => {
+      socket.off("kickedNotification");
+      socket.off("memberRemoved");
+      socket.off("memberAdded");
+    };
+  }, [user._id, activeGroup]);
 
   /* ---------- HELPERS (IMPORTANT) ---------- */
   const isCommunityAdmin = groups.some(
@@ -165,8 +204,8 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
                   <div
                     key={n.id}
                     className={`mb-2 p-3 rounded text-sm ${n.type === "approved"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
                       }`}
                   >
                     {n.message}
@@ -293,7 +332,7 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
           );
         })}
       </div>
-      {showCreateModal && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"> <div className="bg-white w-80 p-5 rounded-lg"> <h2 className="text-lg font-semibold mb-4">Create New Group</h2> <input type="text" placeholder="Group name" className="w-full border p-2 rounded mb-4" value={groupName} onChange={e => setGroupName(e.target.value)} /> <div className="flex justify-end gap-2"> <button onClick={() => { setShowCreateModal(false); setGroupName(""); }} className="px-4 py-2 text-gray-600" > Cancel </button> <button onClick={async () => { if (!groupName.trim()) return; const res = await API.post("/groups", { name: groupName }); setActiveGroup(res.data); setGroupName(""); setShowCreateModal(false); }} className="px-4 py-2 bg-secondary text-white rounded" > Create </button> </div> </div> </div>)}
+      {showCreateModal && (<div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"> <div className="bg-white w-80 p-5 rounded-lg"> <h2 className="text-lg font-semibold mb-4">Create New Group</h2> <input type="text" placeholder="Group name" className="w-full border p-2 rounded mb-4" value={groupName} onChange={e => setGroupName(e.target.value)} /> <input type="text" placeholder="Group description" className="w-full border p-2 rounded mb-4" value={groupDescription} onChange={e => setGroupDescription(e.target.value)} /> <div className="flex justify-end gap-2"> <button onClick={() => { setShowCreateModal(false); setGroupName(""); }} className="px-4 py-2 text-gray-600" > Cancel </button> <button onClick={async () => { if (!groupName.trim()) return; const res = await API.post("/groups", { name: groupName }); setActiveGroup(res.data); setGroupName(""); setShowCreateModal(false); }} className="px-4 py-2 bg-secondary text-white rounded" > Create </button> </div> </div> </div>)}
 
       {/* JOIN MODAL */}
       {showJoinModal && selectedGroup && (
