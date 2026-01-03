@@ -37,7 +37,7 @@ export const getReports = async (req, res) => {
     .populate("reportedUser", "name email")
     .populate("reportedBy", "name email")
     .populate("group", "name");
-    res.json(reports);
+  res.json(reports);
 };
 
 export const deleteReportedMessage = async (req, res) => {
@@ -106,4 +106,33 @@ export const removeReportedUser = async (req, res) => {
   await Report.findByIdAndDelete(reportId);
 
   res.json({ success: true });
+};
+
+export const warnReportedUser = async (req, res) => {
+  const { reportId } = req.params;
+
+  const report = await Report.findById(reportId)
+    .populate("group", "name")
+    .populate("message", "content");
+
+  if (!report) {
+    return res.status(404).json({ message: "Report not found" });
+  }
+
+  const userId = report.reportedUser.toString();
+
+  const io = getIO();
+  console.log(`⚠️ Emitting warnNotification to user: ${userId}`);
+
+  // 🔥 Notify user
+  io.to(userId.toString()).emit("warnNotification", {
+    message: `⚠️ Warning: You have been warned for your message in ${report.group.name}: "${report.reason}"`
+  });
+
+  // Optional: You could mark the report as "warned" or delete it if a warning resolves it.
+  // For now, we keep it but maybe we should delete it? 
+  // Let's delete it to "resolve" the report action.
+  await Report.findByIdAndDelete(reportId);
+
+  res.json({ success: true, message: "User warned and report resolved" });
 };

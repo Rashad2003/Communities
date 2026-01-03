@@ -1,5 +1,5 @@
 import express from "express";
-import { addMember, createGroups, deleteGroup, getGroups, approvedMember, rejectRequest, removeMember, addingMember } from "../controllers/groupController.js";
+import { addMember, createGroups, deleteGroup, getGroups, approvedMember, rejectRequest, removeMember, addingMember, markGroupRead } from "../controllers/groupController.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
@@ -9,7 +9,7 @@ router.post(
   "/",
   authMiddleware,
   createGroups
-  );
+);
 
 // Get all groups
 router.get("/", authMiddleware, getGroups);
@@ -43,6 +43,12 @@ router.post(
   "/:groupId/add/:userId",
   authMiddleware,
   addingMember
+);
+
+router.post(
+  "/:groupId/read",
+  authMiddleware,
+  markGroupRead
 );
 
 

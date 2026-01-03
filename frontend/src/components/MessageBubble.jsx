@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { IoIosArrowDown, IoMdClose } from "react-icons/io";
 import { FaFileAlt } from "react-icons/fa";
 import ReportModal from "./reportModal";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const MessageBubble = ({ message, isMe, isAdmin, onReply = () => { }, hideReply }) => {
   const user = getUser();
@@ -54,14 +56,36 @@ const MessageBubble = ({ message, isMe, isAdmin, onReply = () => { }, hideReply 
 
           {/* MESSAGE CONTENT */}
           {message.type === "text" && (
-            <p
-              dangerouslySetInnerHTML={{
-                __html: message.content.replace(
-                  /(@\w+)/g,
-                  '<span class="text-blue-500 font-bold">$1</span>'
-                )
-              }}
-            />
+            <div className={`markdown-content text-sm ${isMe ? "text-white" : "text-gray-800"}`}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ node, inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '')
+                    return !inline ? (
+                      <pre className="not-prose bg-gray-800 text-gray-100 p-2 rounded-md overflow-x-auto my-2 text-xs">
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code className="bg-gray-200 text-red-500 rounded px-1 py-0.5 text-xs font-mono" {...props}>
+                        {children}
+                      </code>
+                    )
+                  },
+                  p: ({ children }) => <p className="mb-1 last:mb-0 break-words">{children}</p>,
+                  ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                  blockquote: ({ children }) => <blockquote className="border-l-4 border-gray-300 pl-2 italic my-2">{children}</blockquote>,
+                  h1: ({ children }) => <h1 className="text-xl font-bold my-2">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-lg font-bold my-2">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-md font-bold my-1">{children}</h3>,
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
           )}
 
           {message.type === "image" && (

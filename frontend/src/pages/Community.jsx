@@ -31,7 +31,8 @@ const Community = () => {
     const fetchGroups = async () => {
       const res = await API.get("/groups");
       const groupsData = res.data || [];
-      console.log(groupsData);
+      console.log("🔥 API /groups RAW RESPONSE:", groupsData);
+      console.log("First group unread:", groupsData[0]?.unreadCount);
 
       setGroups(groupsData);
 

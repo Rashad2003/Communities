@@ -275,13 +275,27 @@ const MessageInput = ({ group, parentId = null }) => {
         </button>
 
 
-        <input
+        <textarea
           disabled={!!file}
-          className={`flex-1 rounded-full outline-none px-2 md:px-4 py-2 ${file ? "bg-gray-100 cursor-not-allowed" : ""
+          rows={1}
+          className={`flex-1 rounded-2xl outline-none px-2 md:px-4 py-2 resize-none overflow-hidden min-h-[40px] max-h-[120px] ${file ? "bg-gray-100 cursor-not-allowed" : ""
             }`}
           placeholder={file ? "Send file..." : "Type a message (@ to mention)"}
           value={text}
-          onChange={handleTyping}
+          onChange={(e) => {
+            handleTyping(e);
+            e.target.style.height = 'auto';
+            e.target.style.height = `${e.target.scrollHeight}px`;
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              if (!text.trim() && !file) return;
+              // Trigger submit
+              const form = e.target.closest('form');
+              if (form) form.requestSubmit();
+            }
+          }}
         />
 
         <button

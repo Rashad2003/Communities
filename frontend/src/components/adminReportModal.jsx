@@ -6,16 +6,16 @@ const AdminReportsModal = ({ onClose }) => {
   const [reports, setReports] = useState([]);
 
   useEffect(() => {
-  const fetchReports = () => {
-    API.get("/reports").then(res => setReports(res.data));
-  };
+    const fetchReports = () => {
+      API.get("/reports").then(res => setReports(res.data));
+    };
 
-  fetchReports();
+    fetchReports();
 
-  socket.on("newReport", fetchReports);
+    socket.on("newReport", fetchReports);
 
-  return () => socket.off("newReport", fetchReports);
-}, []);
+    return () => socket.off("newReport", fetchReports);
+  }, []);
 
 
   return (
@@ -46,16 +46,23 @@ const AdminReportsModal = ({ onClose }) => {
 
             <div className="flex gap-2 mt-2">
               <button onClick={async () => {
-      await API.delete(`/reports/${r._id}/user`);
-      setReports(prev => prev.filter(x => x._id !== r._id));
-    }} className="bg-red-600 text-white px-2 py-1 rounded">
+                await API.post(`/reports/${r._id}/warn`);
+                setReports(prev => prev.filter(x => x._id !== r._id));
+              }} className="bg-orange-500 text-white px-2 py-1 rounded">
+                Warn Member
+              </button>
+
+              <button onClick={async () => {
+                await API.delete(`/reports/${r._id}/user`);
+                setReports(prev => prev.filter(x => x._id !== r._id));
+              }} className="bg-red-600 text-white px-2 py-1 rounded">
                 Remove Member
               </button>
 
               <button onClick={async () => {
-      await API.delete(`/reports/${r._id}/message`);
-      setReports(prev => prev.filter(x => x._id !== r._id));
-    }} className="bg-gray-600 text-white px-2 py-1 rounded">
+                await API.delete(`/reports/${r._id}/message`);
+                setReports(prev => prev.filter(x => x._id !== r._id));
+              }} className="bg-gray-600 text-white px-2 py-1 rounded">
                 Delete Message
               </button>
             </div>

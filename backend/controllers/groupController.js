@@ -29,9 +29,14 @@ export const createGroups = async (req, res) => {
     pendingRequests: []            // 🔥 MUST EXIST
   });
 
-  // 🔥 emit real-time event
+  // 🔥 emit real-time event with POPULATED data (so frontend sees objects)
+  const populatedGroup = await groupModel.findById(group._id)
+    .populate("admins", "name email")
+    .populate("members", "name email");
+
   const io = getIO();
-  io.emit("groupCreated", group);
+  io.emit("groupCreateds", group);
+  io.emit("groupCreated", populatedGroup);
 
   res.json(group);
 };
@@ -52,7 +57,37 @@ export const getGroups = async (req, res) => {
     .populate("members", "_id name")
     .populate("pendingRequests", "_id name");
 
-  res.json(groups);
+  // Calculate unread counts
+  const groupsWithCount = await Promise.all(groups.map(async (group) => {
+    let unreadCount = 0;
+    const userId = String(req.user.id).trim();
+    const isMember = group.members.some(m => String(m._id).trim() === userId) ||
+      group.admins.some(a => String(a._id).trim() === userId);
+
+    if (isMember) {
+      const lastRead = group.lastRead?.get(req.user.id) || new Date(0); // Default to epoch if never read
+      unreadCount = await messageModel.countDocuments({
+        groupId: group._id,
+        createdAt: { $gt: lastRead }
+      });
+      console.log(`[GET_GROUPS] Group: ${group.name} | User: ${req.user.id} | LastRead: ${lastRead} | Unread: ${unreadCount}`);
+    }
+    return {
+      _id: group._id,
+      name: group.name,
+      description: group.description,
+      isAnnouncement: group.isAnnouncement,
+      admins: group.admins,
+      members: group.members,
+      pendingRequests: group.pendingRequests,
+      createdAt: group.createdAt,
+      updatedAt: group.updatedAt,
+      lastRead: group.lastRead, // Optional, but might be useful debugging
+      unreadCount: unreadCount
+    };
+  }));
+
+  res.json(groupsWithCount);
 };
 
 /* ==============================
@@ -301,6 +336,29 @@ export const addingMember = async (req, res) => {
     groupId: groupId.toString(),
     user
   });
+
+  res.json({ success: true });
+};
+
+/* ==============================
+   MARK GROUP AS READ
+================================ */
+export const markGroupRead = async (req, res) => {
+  const { groupId } = req.params;
+  const userId = req.user.id;
+
+  const group = await groupModel.findById(groupId);
+  if (!group) {
+    return res.status(404).json({ message: "Group not found" });
+  }
+
+  // Initialize map if it doesn't exist (handled by default map but good safety)
+  if (!group.lastRead) {
+    group.lastRead = new Map();
+  }
+
+  group.lastRead.set(userId, new Date());
+  await group.save();
 
   res.json({ success: true });
 };

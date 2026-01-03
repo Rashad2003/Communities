@@ -97,11 +97,19 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
   }, []);
 
 
-  // useEffect(() => {
-  //   if (!group?._id) return;
-  //   socket.emit("joinGroup", group._id);
-  //   fetchMessages();
-  // }, [group._id]);
+  useEffect(() => {
+    if (!group?._id) return;
+
+    // Mark as read in backend
+    API.post(`/groups/${group._id}/read`);
+
+    // Update local state to clear badge (in parent)
+    setGroups(prev => prev.map(g =>
+      g._id === group._id ? { ...g, unreadCount: 0 } : g
+    ));
+
+    fetchMessages();
+  }, [group._id]);
 
   useEffect(() => {
     if (!group?._id) return;
@@ -121,7 +129,10 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
           );
         } else {
           // It's a top-level message -> Add to list
-          setMessages(prev => [...prev, msg]);
+          setMessages(prev => {
+            if (prev.some(m => m._id === msg._id)) return prev;
+            return [...prev, msg];
+          });
         }
       }
     };
@@ -324,7 +335,7 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
   // }
 
   return (
-    <div className="flex w-full h-full overflow-hidden">
+    <div className="flex flex-1 w-full h-full overflow-hidden">
       <div className="flex-1 flex flex-col relative overflow-y-hidden">
         {/* Chat Header */}
         <div className="bg-primary text-white p-4 font-semibold flex items-center justify-between">

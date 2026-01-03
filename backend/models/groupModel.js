@@ -7,7 +7,12 @@ const GroupSchema = new mongoose.Schema(
     isAnnouncement: { type: Boolean, default: false },
     admins: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    pendingRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+    pendingRequests: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    lastRead: {
+      type: Map,
+      of: Date,
+      default: {}
+    }
   },
   { timestamps: true }
 );

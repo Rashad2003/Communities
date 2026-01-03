@@ -74,10 +74,30 @@ export const sendMessage = async (req, res) => {
     }
 
     // 🔥 EMIT REAL-TIME
+    // 🔥 EMIT REAL-TIME to Group (for active users)
     const io = getIO();
     io.to(groupId).emit("newMessage", {
       ...message.toObject(),
       sender: { _id: req.user.id, name: req.user.name }
+    });
+
+    // 🔥 EMIT TO ALL MEMBERS (for background updates)
+    // We need to fetch the full group members again to get their IDs if not populated
+    const fullGroup = await groupModel.findById(groupId);
+
+    // Combine members and admins, exclude sender
+    const recipients = [
+      ...fullGroup.members.map(m => m.toString()),
+      ...fullGroup.admins.map(a => a.toString())
+    ].filter(id => id !== req.user.id);
+
+    // Emit to each user's personal room
+    // Use Set to avoid duplicates
+    new Set(recipients).forEach(userId => {
+      io.to(userId).emit("newMessage", {
+        ...message.toObject(),
+        sender: { _id: req.user.id, name: req.user.name }
+      });
     });
 
     res.json(message);
