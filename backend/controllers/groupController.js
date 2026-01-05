@@ -68,6 +68,7 @@ export const getGroups = async (req, res) => {
       const lastRead = group.lastRead?.get(req.user.id) || new Date(0); // Default to epoch if never read
       unreadCount = await messageModel.countDocuments({
         groupId: group._id,
+        sender: { $ne: req.user.id }, // Exclude own messages
         createdAt: { $gt: lastRead }
       });
       console.log(`[GET_GROUPS] Group: ${group.name} | User: ${req.user.id} | LastRead: ${lastRead} | Unread: ${unreadCount}`);

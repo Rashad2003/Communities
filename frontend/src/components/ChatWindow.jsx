@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import API from "../api/api";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
@@ -25,6 +25,10 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
   const [showResources, setShowResources] = useState(false);
   const [activeThread, setActiveThread] = useState(null);
   const menuRef = useRef(null);
+
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const previousHeightRef = useRef(null);
 
   const isCommunityAdmin = communityAdmins.some(
     admin => admin._id === user._id
@@ -64,37 +68,80 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
   };
 
 
-  const fetchMessages = async () => {
-    const res = await API.get(`/messages/${group._id}`);
-    setMessages(res.data);
+  const fetchMessages = async (before = null) => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const url = before
+        ? `/messages/${group._id}?before=${before}`
+        : `/messages/${group._id}`;
+
+      const res = await API.get(url);
+      const newMessages = res.data;
+
+      if (newMessages.length < 20) {
+        setHasMore(false);
+      }
+
+      if (before) {
+        if (messagesContainerRef.current) {
+          previousHeightRef.current = messagesContainerRef.current.scrollHeight;
+        }
+        setMessages(prev => [...newMessages, ...prev]);
+      } else {
+        setMessages(newMessages);
+        setHasMore(newMessages.length === 20); // Reset hasMore on fresh load
+        setTimeout(scrollToBottom, 100);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => {
-    fetchMessages();
-  }, [group]);
+  useLayoutEffect(() => {
+    if (previousHeightRef.current !== null && messagesContainerRef.current) {
+      const newHeight = messagesContainerRef.current.scrollHeight;
+      const oldHeight = previousHeightRef.current;
+      const diff = newHeight - oldHeight;
+      messagesContainerRef.current.scrollTop = diff;
+      previousHeightRef.current = null;
+    }
+  }, [messages]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Reset state on group change
+    setMessages([]);
+    setHasMore(true);
+    fetchMessages();
+  }, [group._id]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
 
     const handleScroll = () => {
+      // 1. Show/Hide "Scroll to Bottom" button
       const isAtBottom =
         container.scrollHeight -
         container.scrollTop -
         container.clientHeight <
-        50;
+        100;
 
       setShowScrollDown(!isAtBottom);
+
+      // 2. Infinite Scroll (Load More)
+      if (container.scrollTop === 0 && hasMore && !loading && messages.length > 0) {
+        const firstMessage = messages[0];
+        fetchMessages(firstMessage.createdAt);
+      }
     };
 
     container.addEventListener("scroll", handleScroll);
     return () =>
       container.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [group._id, hasMore, loading, messages]);
 
 
   useEffect(() => {
@@ -108,7 +155,7 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
       g._id === group._id ? { ...g, unreadCount: 0 } : g
     ));
 
-    fetchMessages();
+    // fetchMessages(); // Removed redundant call
   }, [group._id]);
 
   useEffect(() => {
@@ -129,10 +176,18 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
           );
         } else {
           // It's a top-level message -> Add to list
+          // Check if message already exists to prevent duplicates
           setMessages(prev => {
             if (prev.some(m => m._id === msg._id)) return prev;
+
+            // If user is at bottom, auto-scroll will happen via useEffect dependency on messages
             return [...prev, msg];
           });
+
+          // Only scroll to bottom if user was already at bottom or it's my message
+          if (msg.sender._id === user._id) {
+            setTimeout(scrollToBottom, 100);
+          }
         }
       }
     };
@@ -440,6 +495,11 @@ const ChatWindow = ({ group, groups, setGroups, communityAdmins, setActiveGroup,
 
         {/* Messages */}
         <div ref={messagesContainerRef} className="flex-1 p-4 overflow-y-auto bg-gray-100 bg-[url(abc.webp)]">
+          {loading && (
+            <div className="flex justify-center p-2">
+              <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
 
           {messages.map((msg, index) => {
             const currentDate = new Date(msg.createdAt).toDateString();

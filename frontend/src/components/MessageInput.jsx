@@ -226,28 +226,32 @@ const MessageInput = ({ group, parentId = null }) => {
               <FaFileAlt className="text-blue-500 text-lg" />
               <span>Document</span>
             </button>
-            <button
-              type="button"
-              className="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left"
-              onClick={() => {
-                setShowPollModal(true);
-                setShowPlusMenu(false);
-              }}
-            >
-              <FaPoll className="text-green-500 text-lg" />
-              <span>Poll</span>
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left"
-              onClick={() => {
-                setShowEventModal(true);
-                setShowPlusMenu(false);
-              }}
-            >
-              <MdEvent className="text-red-500 text-xl" />
-              <span>Event</span>
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left"
+                  onClick={() => {
+                    setShowPollModal(true);
+                    setShowPlusMenu(false);
+                  }}
+                >
+                  <FaPoll className="text-green-500 text-lg" />
+                  <span>Poll</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left"
+                  onClick={() => {
+                    setShowEventModal(true);
+                    setShowPlusMenu(false);
+                  }}
+                >
+                  <MdEvent className="text-red-500 text-xl" />
+                  <span>Event</span>
+                </button>
+              </>
+            )}
           </div>
         )}
 

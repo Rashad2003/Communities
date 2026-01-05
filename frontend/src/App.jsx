@@ -20,15 +20,15 @@ export const App = () => {
         <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
         <Route path="/group/:id" element={<ProtectedRoute><Group /></ProtectedRoute>} />
         <Route
-  path="/create-group"
-  element={
-    <ProtectedRoute>
-      <RoleRoute>
-          <CreateGroup />
-      </RoleRoute>
-    </ProtectedRoute>
-  }
-/>
+          path="/create-group"
+          element={
+            <ProtectedRoute>
+              <RoleRoute>
+                <CreateGroup />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   )

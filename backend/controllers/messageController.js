@@ -3,12 +3,29 @@ import groupModel from "../models/groupModel.js";
 import { getIO } from "../socket.js";
 
 export const getMessage = async (req, res) => {
-  const messages = await messageModel.find({
-    groupId: req.params.groupId,
-    parentId: null // Only fetch top-level messages
-  }).populate("sender", "name");
+  try {
+    const { limit = 20, before } = req.query;
 
-  res.json(messages);
+    const query = {
+      groupId: req.params.groupId,
+      parentId: null // Only fetch top-level messages
+    };
+
+    if (before) {
+      query.createdAt = { $lt: new Date(before) };
+    }
+
+    const messages = await messageModel.find(query)
+      .sort({ createdAt: -1 }) // Newest first
+      .limit(parseInt(limit))
+      .populate("sender", "name");
+
+    // Reverse to show oldest -> newest
+    res.json(messages.reverse());
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ message: "Failed to fetch messages" });
+  }
 };
 
 export const getThreadMessages = async (req, res) => {
@@ -86,15 +103,22 @@ export const sendMessage = async (req, res) => {
     const fullGroup = await groupModel.findById(groupId);
 
     // Combine members and admins, exclude sender
-    const recipients = [
+    const allMembers = [
       ...fullGroup.members.map(m => m.toString()),
       ...fullGroup.admins.map(a => a.toString())
-    ].filter(id => id !== req.user.id);
+    ];
+
+    console.log("DEBUG: Sender ID:", req.user.id);
+    console.log("DEBUG: All Members:", allMembers);
+
+    const recipients = allMembers.filter(id => id !== req.user.id);
+
+    console.log("DEBUG: Recipients after filter:", recipients);
 
     // Emit to each user's personal room
     // Use Set to avoid duplicates
     new Set(recipients).forEach(userId => {
-      io.to(userId).emit("newMessage", {
+      io.to(userId).emit("background_message", {
         ...message.toObject(),
         sender: { _id: req.user.id, name: req.user.name }
       });

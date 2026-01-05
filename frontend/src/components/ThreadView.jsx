@@ -64,7 +64,7 @@ const ThreadView = ({ parentMessage, onClose, group }) => {
     }, [parentMessage._id]);
 
     return (
-        <div className="w-1/3 border-l border-gray-300 flex flex-col bg-white h-full shadow-xl">
+        <div className="w-full lg:w-1/3 border-l border-gray-300 flex flex-col bg-white h-full shadow-xl">
             <div className="p-4 border-b flex justify-between items-center bg-gray-50">
                 <h3 className="font-semibold text-lg">Reply</h3>
                 <button onClick={onClose} className="text-xl text-gray-500 hover:text-black">

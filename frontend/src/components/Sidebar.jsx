@@ -167,8 +167,10 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
       }));
     });
 
-    socket.on("newMessage", (msg) => {
+    socket.on("background_message", (msg) => {
       console.log("⚡ SOCKET MSG RECEIVED:", msg);
+      console.log(`DEBUG: msg.sender._id (${msg.sender._id}) vs user._id (${user._id})`);
+
       setGroups(prev => prev.map(g => {
         // Robust comparison
         const groupId = String(g._id).trim();
@@ -176,7 +178,10 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
 
         if (groupId === msgGroupId) {
           // Don't increment for my own messages
-          if (msg.sender._id === user._id) return g;
+          if (String(msg.sender._id) === String(user._id)) {
+            console.log("DEBUG: Ignoring own message for badge");
+            return g;
+          }
 
           const activeId = activeGroup ? String(activeGroup._id).trim() : null;
 
@@ -195,7 +200,7 @@ const Sidebar = ({ groups, setGroups, activeGroup, setActiveGroup, notifications
       socket.off("warnNotification");
       socket.off("memberRemoved");
       socket.off("memberAdded");
-      socket.off("newMessage");
+      socket.off("background_message");
     };
   }, [user._id, activeGroup]);
 
